@@ -12,7 +12,7 @@ Currently the following sources are supported. Feel free to contribute a PR if y
   * Issues
   * PRs
   * PR Reviews
-* Wiki
+* MediaWiki
   * Page edited
 * Discourse
   * Topic created
@@ -83,7 +83,7 @@ This section documents all the possible configuration values. For examples see t
 | `communityPortal` | Object    | No       | -       | Community Portal configuration options (see below) |
 | `discourse`       | Object    | No       | -       | Discourse configuration options (see below)        |
 | `github`          | Object    | No       | -       | GitHub configuration options (see below)           |
-| `wiki`            | Object    | No       | -       | Wiki configuration options (see below)             |
+| `mediaWiki`       | Object    | No       | -       | MediaWiki configuration options (see below)        |
 
 #### Community Portal
 
@@ -142,7 +142,7 @@ const config = {
     topicType: 'Created Discourse Topic',
     postType: 'Posted on Discourse Topic',
   },
-  wiki: {
+  mediaWiki: {
     enabled: true,
     baseUrl: 'https://wiki.mozilla.org/api.php?action=feedcontributions',
     username: 'michaelkohler',
