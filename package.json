@@ -1,0 +1,57 @@
+{
+  "name": "volunteer-contributions-fetch",
+  "version": "0.0.0-development",
+  "description": "Library to fetch volunteer contributions from several sources such as GitHub",
+  "author": "Michael Kohler",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MichaelKohler/volunteer-contributions-fetch.git"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@octokit/rest": "^19.0.4",
+    "axios": "^0.27.2",
+    "debug": "^4.3.4",
+    "jsdom": "^20.0.0",
+    "xml2js": "^0.4.23"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.0.3",
+    "@commitlint/config-angular": "^17.0.3",
+    "ava": "^4.3.1",
+    "eslint": "^8.22.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "husky": "^8.0.1",
+    "nyc": "^15.1.0",
+    "semantic-release": "^19.0.5",
+    "sinon": "^14.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "eslint": "eslint .",
+    "test": "nyc ava",
+    "semantic-release": "semantic-release"
+  },
+  "nyc": {
+    "check-coverage": true,
+    "statements": 13,
+    "branches": 4,
+    "functions": 12,
+    "lines": 13,
+    "include": [
+      "lib/**/*.js"
+    ],
+    "all": true,
+    "reporter": [
+      "text-summary",
+      "lcov"
+    ]
+  },
+  "ava": {
+    "files": [
+      "lib/**/*.test.js"
+    ],
+    "timeout": "10s"
+  }
+}
