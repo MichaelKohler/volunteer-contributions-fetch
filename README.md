@@ -101,7 +101,7 @@ This section documents all the possible configuration values. For examples see t
 |---------------------|-----------|----------|---------|----------------------------------------------------------------------------------------------------------------------------|
 | `enabled`           | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely.       |
 | `baseUrl`           | string    | Yes      | -       | API base url without trailing slash                                                                                        |
-| `username`          | string    | Yes      | -       | Username on Discoruse                                                                                                      |
+| `username`          | string    | Yes      | -       | Username on Discourse                                                                                                      |
 | `topicType`         | string    | Yes      | -       | Label for entries related to having created a new topic.                                                                   |
 | `postType`          | string    | Yes      | -       | Label for entries related to having posted on an existing topic.                                                           |
 
@@ -122,6 +122,16 @@ This section documents all the possible configuration values. For examples see t
 | `types.approvedPR`         | string    | Yes      | -       | Label for entries related to approving a GitHub PR                                                                         |
 | `types.changesRequestedPR` | string    | Yes      | -       | Label for entries related to requesting changes on a GitHub PR                                                             |
 | `types.reviewedPR`         | string    | Yes      | -       | Label for entries related to reviewing a GitHub PR (fallback)                                                              |
+
+#### MediaWiki
+
+| Field               | Data Type | Required | Default | Description                                                                                                                |
+|---------------------|-----------|----------|---------|----------------------------------------------------------------------------------------------------------------------------|
+| `enabled`           | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.       |
+| `baseUrl`           | string    | Yes      | -       | API base url without trailing slash                                                                                        |
+| `username`          | string    | Yes      | -       | Username on MediaWiki                                                                                                      |
+| `editType`          | string    | Yes      | -       | Label for entries related to having edited an article.                                                                     |
+| `stopDate`          | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
 
 ### Sample configuration
 
