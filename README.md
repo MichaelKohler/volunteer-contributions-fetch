@@ -87,23 +87,23 @@ This section documents all the possible configuration values. For examples see t
 
 #### Community Portal
 
-| Field               | Data Type | Required | Default | Description                                                                                                                |
-|---------------------|-----------|----------|---------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`           | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `communityPortal` object entirely. |
-| `baseUrl`           | string    | Yes      | -       | Community Portal base url without trailing slash                                                                           |
-| `username`          | string    | Yes      | -       | Username on the Community Portal                                                                                           |
-| `participationType` | string    | Yes      | -       | Label for entries related to having participated in an event.                                                              |
-| `campaignType`      | string    | Yes      | -       | Label for entries related to having participated in a campaign                                                             |
+| Field               | Data Type | Required | Default                    | Description                                                                                                                |
+|---------------------|-----------|----------|----------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `enabled`           | boolean   | Yes      | -                          | Indicates whether this data source is enabled. Alternatively you can also leave off the `communityPortal` object entirely. |
+| `baseUrl`           | string    | Yes      | -                          | Community Portal base url without trailing slash                                                                           |
+| `username`          | string    | Yes      | -                          | Username on the Community Portal                                                                                           |
+| `participationType` | string    | No       | Participated in an event   | Label for entries related to having participated in an event.                                                              |
+| `campaignType`      | string    | No       | Participated in a campaign | Label for entries related to having participated in a campaign                                                             |
 
 #### Discourse
 
-| Field               | Data Type | Required | Default | Description                                                                                                                |
-|---------------------|-----------|----------|---------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`           | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely.       |
-| `baseUrl`           | string    | Yes      | -       | API base url without trailing slash                                                                                        |
-| `username`          | string    | Yes      | -       | Username on Discourse                                                                                                      |
-| `topicType`         | string    | Yes      | -       | Label for entries related to having created a new topic.                                                                   |
-| `postType`          | string    | Yes      | -       | Label for entries related to having posted on an existing topic.                                                           |
+| Field               | Data Type | Required | Default                   | Description                                                                                                                |
+|---------------------|-----------|----------|---------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `enabled`           | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely.       |
+| `baseUrl`           | string    | Yes      | -                         | API base url without trailing slash                                                                                        |
+| `username`          | string    | Yes      | -                         | Username on Discourse                                                                                                      |
+| `topicType`         | string    | No       | Created Discourse Topic   | Label for entries related to having created a new topic.                                                                   |
+| `postType`          | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                           |
 
 #### GitHub
 
@@ -114,25 +114,25 @@ This section documents all the possible configuration values. For examples see t
 | `username`                 | string    | Yes      | -       | Username on GitHub                                                                                                         |
 | `stopDate`                 | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
 | `filter`                   | string    | Yes      | -       | Regex to apply to each entry to filter for organization/repo names. For example: `"mozilla|firefox"` to only include orgs and repos with either "mozilla" or "firefox" it their name.|
-| `types`                    | Object    | Yes      | -       | Object containing the different labels below                                                                               |
-| `types.commit`             | string    | Yes      | -       | Label for entries related to GitHub commits                                                                                |
-| `types.privateCommit`      | string    | Yes      | -       | Label for entries related to private GitHub commits                                                                        |
-| `types.createdPR`          | string    | Yes      | -       | Label for entries related to opening GitHub PRs                                                                            |
-| `types.createdIssue`       | string    | Yes      | -       | Label for entries related to creating GitHub issues                                                                        |
-| `types.commentedPR`        | string    | Yes      | -       | Label for entries related to commenting on a GitHub PR (review)                                                            |
-| `types.approvedPR`         | string    | Yes      | -       | Label for entries related to approving a GitHub PR                                                                         |
-| `types.changesRequestedPR` | string    | Yes      | -       | Label for entries related to requesting changes on a GitHub PR                                                             |
-| `types.reviewedPR`         | string    | Yes      | -       | Label for entries related to reviewing a GitHub PR (fallback)                                                              |
+| `types`                    | Object    | No       | -                                   | Object containing the different labels below                                                                               |
+| `types.commit`             | string    | No       | GitHub Commit                       | Label for entries related to GitHub commits                                                                                |
+| `types.privateCommit`      | string    | No       | Commit in private repository        | Label for entries related to private GitHub commits                                                                        |
+| `types.createdPR`          | string    | No       | Created PR                          | Label for entries related to opening GitHub PRs                                                                            |
+| `types.createdIssue`       | string    | No       | Created Issue Report                | Label for entries related to creating GitHub issues                                                                        |
+| `types.commentedPR`        | string    | No       | Commented on a Pull Request         | Label for entries related to commenting on a GitHub PR (review)                                                            |
+| `types.approvedPR`         | string    | No       | Approved a Pull Request             | Label for entries related to approving a GitHub PR                                                                         |
+| `types.changesRequestedPR` | string    | No       | Requested changes on a Pull Request | Label for entries related to requesting changes on a GitHub PR                                                             |
+| `types.reviewedPR`         | string    | No       | Reviewed a Pull Request             | Label for entries related to reviewing a GitHub PR (fallback)                                                              |
 
 #### MediaWiki
 
-| Field               | Data Type | Required | Default | Description                                                                                                                |
-|---------------------|-----------|----------|---------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`           | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.       |
-| `baseUrl`           | string    | Yes      | -       | API base url without trailing slash                                                                                        |
-| `username`          | string    | Yes      | -       | Username on MediaWiki                                                                                                      |
-| `editType`          | string    | Yes      | -       | Label for entries related to having edited an article.                                                                     |
-| `stopDate`          | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
+| Field               | Data Type | Required | Default   | Description                                                                                                                |
+|---------------------|-----------|----------|-----------|----------------------------------------------------------------------------------------------------------------------------|
+| `enabled`           | boolean   | Yes      | -         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.       |
+| `baseUrl`           | string    | Yes      | -         | API base url without trailing slash                                                                                        |
+| `username`          | string    | Yes      | -         | Username on MediaWiki                                                                                                      |
+| `editType`          | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                                     |
+| `stopDate`          | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
 
 ### Sample configuration
 
