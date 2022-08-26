@@ -8,6 +8,9 @@
       }
     }
   },
+  "parserOptions": {
+    "ecmaVersion": 2022
+  },
   "rules": {
     "arrow-body-style": 0,
     "comma-dangle": 0,
