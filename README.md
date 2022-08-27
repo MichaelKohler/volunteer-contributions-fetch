@@ -126,7 +126,7 @@ This section documents all the possible configuration values. For examples see t
 | `types.approvedPR`         | string    | No       | Approved a Pull Request             | Label for entries related to approving a GitHub PR                                                                         |
 | `types.changesRequestedPR` | string    | No       | Requested changes on a Pull Request | Label for entries related to requesting changes on a GitHub PR                                                             |
 | `types.reviewedPR`         | string    | No       | Reviewed a Pull Request             | Label for entries related to reviewing a GitHub PR (fallback)                                                              |
-| `delayMsPerRequest`        | number    | No       | 1000                                | Delay between each request to GitHub. You might hit rate limiting if you set this lower than default.                      |
+| `delayMsPerRequest`        | number    | No       | 2000                                | Delay between each request to GitHub. You might hit rate limiting if you set this lower than default.                      |
 
 #### MediaWiki
 
