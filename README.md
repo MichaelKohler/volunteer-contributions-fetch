@@ -9,7 +9,8 @@ This library fetches contributions from several different sources and saves them
 Currently the following sources are supported. Feel free to contribute a PR if you'd like to support another source!
 
 * GitHub
-  * Issues
+  * Issues created
+  * Comments on issues
   * PRs
   * PR Reviews
 * MediaWiki
@@ -27,8 +28,6 @@ Each of the sources can be enabled separately. See the configuration section bel
 
 The following sources are planned:
 
-* GitHub
-  * Comments
 * Bugzilla
   * Bug reported
   * Bug commented on
@@ -38,7 +37,7 @@ The following sources are planned:
 
 ### Possible future sources
 
-The following sources would be interesting for (at least) Mozilla contributors:
+The following sources would be interesting for (at least) Mozilla contributors, however they do not expose an activity API endpoint to easily gather information for a certain user.
 
 * support.mozilla.org
 * Pontoon
@@ -111,6 +110,7 @@ This section documents all the possible configuration values. For examples see t
 |----------------------------|-----------|----------|---------|----------------------------------------------------------------------------------------------------------------------------|
 | `enabled`                  | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `github` object entirely.          |
 | `allowPrivate`             | boolean   | No       | false   | Indicates whether fetching from private repositories is allowed. If not set, the script will throw if you pass a `GITHUB_TOKEN` with private repo scope. In most cases you will not want to have a token with private scope as you do not want to leak any private information in your contribution overview. Please think twice before enabling this config.         |
+| `commentsEnabled`          | boolean   | No       | true    | Indicates whether fetching comments is enabled.                                                                             |
 | `commitsEnabled`           | boolean   | No       | true    | Indicates whether fetching commits is enabled.                                                                             |
 | `issuesEnabled`            | boolean   | No       | true    | Indicates whether fetching issues is enabled.                                                                              |
 | `reviewsEnabled`           | boolean   | No       | true    | Indicates whether fetching reviews is enabled.                                                                             |
@@ -122,6 +122,7 @@ This section documents all the possible configuration values. For examples see t
 | `types.privateCommit`      | string    | No       | Commit in private repository        | Label for entries related to private GitHub commits                                                                        |
 | `types.createdPR`          | string    | No       | Created PR                          | Label for entries related to opening GitHub PRs                                                                            |
 | `types.createdIssue`       | string    | No       | Created Issue Report                | Label for entries related to creating GitHub issues                                                                        |
+| `types.commented`          | string    | No       | Commented on an Issue               | Label for entries related to commenting on an issue                                                              |
 | `types.commentedPR`        | string    | No       | Commented on a Pull Request         | Label for entries related to commenting on a GitHub PR (review)                                                            |
 | `types.approvedPR`         | string    | No       | Approved a Pull Request             | Label for entries related to approving a GitHub PR                                                                         |
 | `types.changesRequestedPR` | string    | No       | Requested changes on a Pull Request | Label for entries related to requesting changes on a GitHub PR                                                             |
