@@ -13,6 +13,9 @@ Currently the following sources are supported. Feel free to contribute a PR if y
   * Comments on issues
   * PRs
   * PR Reviews
+* Bugzilla
+  * Bug reported
+  * Bug commented on
 * MediaWiki
   * Page edited
 * Discourse
@@ -28,9 +31,6 @@ Each of the sources can be enabled separately. See the configuration section bel
 
 The following sources are planned:
 
-* Bugzilla
-  * Bug reported
-  * Bug commented on
 * Phabricator
   * Revision created
   * Revision updated
@@ -79,10 +79,23 @@ This section documents all the possible configuration values. For examples see t
 | Field             | Data Type | Required | Default | Description                                        |
 |-------------------|-----------|----------|---------|----------------------------------------------------|
 | `outputFile`      | string    | Yes      | -       | Path to contributions output file                  |
+| `bugzilla`        | Object    | No       | -       | Bugzilla configuration options (see below) |
 | `communityPortal` | Object    | No       | -       | Community Portal configuration options (see below) |
 | `discourse`       | Object    | No       | -       | Discourse configuration options (see below)        |
 | `github`          | Object    | No       | -       | GitHub configuration options (see below)           |
 | `mediaWiki`       | Object    | No       | -       | MediaWiki configuration options (see below)        |
+
+#### Bugzilla
+
+| Field                 | Data Type | Required | Default                   | Description                                                                                                                |
+|-----------------------|-----------|----------|---------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `enabled`             | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.       |
+| `baseUrl`             | string    | Yes      | -                         | API base url without trailing slash (for example: `https://bugzilla.mozilla.org`)                                          |
+| `username`            | string    | Yes      | -                         | Username on MediaWiki                                                                                                      |
+| `stopDate`            | string    | Yes      | -                         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
+| `types`               | Object    | No       | -                         | Object containing the different labels below                                                                               |
+| `types.createdType`   | string    | No       | Created a Bug Report      | Label for entries related to having report a bug/enhancement.                                                              |
+| `types.commentedType` | string    | No       | Commented on a Bug Report | Label for entries related to having commented on a bug/enhancement.                                                        |
 
 #### Community Portal
 
@@ -144,6 +157,12 @@ This section documents all the possible configuration values. For examples see t
 ```js
 const config = {
   outputFile: `${__dirname}/_data/contributions.json`,
+  bugzilla: {
+    enabled: true,
+    baseUrl: 'https://bugzilla.mozilla.org',
+    username: 'me@michaelkohler.info',
+    stopDate: '2008-01-01',
+  },
   communityPortal: {
     enabled: true,
     baseUrl: 'https://community.mozilla.org/people',
