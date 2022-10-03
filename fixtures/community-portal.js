@@ -3,111 +3,117 @@ const allData = {
     document: {
       querySelectorAll: (query) => {
         if (query === '.profile__event') {
-          return [{
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__event-time') {
+          return [
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__event-time') {
+                  return {
+                    textContent: '2022-08-08',
+                  };
+                }
+
+                if (singleQuery === '.profile__event-title') {
+                  return {
+                    textContent: 'EventA',
+                  };
+                }
+
                 return {
-                  textContent: '2022-08-08',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkA';
+                }
 
-              if (singleQuery === '.profile__event-title') {
+                return '';
+              },
+            },
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__event-time') {
+                  return {
+                    textContent: '2022-08-11',
+                  };
+                }
+
+                if (singleQuery === '.profile__event-title') {
+                  return {
+                    textContent: 'EventB',
+                  };
+                }
+
                 return {
-                  textContent: 'EventA',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkB';
+                }
 
-              return {
-                textContent: 'we should not have reached here!',
-              };
+                return '';
+              },
             },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkA';
-              }
-
-              return '';
-            },
-          }, {
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__event-time') {
-                return {
-                  textContent: '2022-08-11',
-                };
-              }
-
-              if (singleQuery === '.profile__event-title') {
-                return {
-                  textContent: 'EventB',
-                };
-              }
-
-              return {
-                textContent: 'we should not have reached here!',
-              };
-            },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkB';
-              }
-
-              return '';
-            },
-          }];
+          ];
         }
 
         if (query === '.profile__campaign') {
-          return [{
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__campaign-dates') {
+          return [
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__campaign-dates') {
+                  return {
+                    textContent: '2022-01-01',
+                  };
+                }
+
+                if (singleQuery === '.profile__campaign-title') {
+                  return {
+                    textContent: 'CampaignA',
+                  };
+                }
+
                 return {
-                  textContent: '2022-01-01',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkA';
+                }
 
-              if (singleQuery === '.profile__campaign-title') {
+                return '';
+              },
+            },
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__campaign-dates') {
+                  return {
+                    textContent: '2022-02-01',
+                  };
+                }
+
+                if (singleQuery === '.profile__campaign-title') {
+                  return {
+                    textContent: 'CampaignB',
+                  };
+                }
+
                 return {
-                  textContent: 'CampaignA',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkB';
+                }
 
-              return {
-                textContent: 'we should not have reached here!',
-              };
+                return '';
+              },
             },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkA';
-              }
-
-              return '';
-            },
-          }, {
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__campaign-dates') {
-                return {
-                  textContent: '2022-02-01',
-                };
-              }
-
-              if (singleQuery === '.profile__campaign-title') {
-                return {
-                  textContent: 'CampaignB',
-                };
-              }
-
-              return {
-                textContent: 'we should not have reached here!',
-              };
-            },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkB';
-              }
-
-              return '';
-            },
-          }];
+          ];
         }
 
         return [];
@@ -139,111 +145,117 @@ const futureData = {
     document: {
       querySelectorAll: (query) => {
         if (query === '.profile__event') {
-          return [{
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__event-time') {
+          return [
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__event-time') {
+                  return {
+                    textContent: '2999-08-08',
+                  };
+                }
+
+                if (singleQuery === '.profile__event-title') {
+                  return {
+                    textContent: 'FutureEvent',
+                  };
+                }
+
                 return {
-                  textContent: '2999-08-08',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkA';
+                }
 
-              if (singleQuery === '.profile__event-title') {
+                return '';
+              },
+            },
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__event-time') {
+                  return {
+                    textContent: '2022-08-11',
+                  };
+                }
+
+                if (singleQuery === '.profile__event-title') {
+                  return {
+                    textContent: 'PastEvent',
+                  };
+                }
+
                 return {
-                  textContent: 'FutureEvent',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkB';
+                }
 
-              return {
-                textContent: 'we should not have reached here!',
-              };
+                return '';
+              },
             },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkA';
-              }
-
-              return '';
-            },
-          }, {
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__event-time') {
-                return {
-                  textContent: '2022-08-11',
-                };
-              }
-
-              if (singleQuery === '.profile__event-title') {
-                return {
-                  textContent: 'PastEvent',
-                };
-              }
-
-              return {
-                textContent: 'we should not have reached here!',
-              };
-            },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkB';
-              }
-
-              return '';
-            },
-          }];
+          ];
         }
 
         if (query === '.profile__campaign') {
-          return [{
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__campaign-dates') {
+          return [
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__campaign-dates') {
+                  return {
+                    textContent: '2999-01-01',
+                  };
+                }
+
+                if (singleQuery === '.profile__campaign-title') {
+                  return {
+                    textContent: 'FutureCampaign',
+                  };
+                }
+
                 return {
-                  textContent: '2999-01-01',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkA';
+                }
 
-              if (singleQuery === '.profile__campaign-title') {
+                return '';
+              },
+            },
+            {
+              querySelector: (singleQuery) => {
+                if (singleQuery === '.profile__campaign-dates') {
+                  return {
+                    textContent: '2022-02-01',
+                  };
+                }
+
+                if (singleQuery === '.profile__campaign-title') {
+                  return {
+                    textContent: 'PastCampaign',
+                  };
+                }
+
                 return {
-                  textContent: 'FutureCampaign',
+                  textContent: 'we should not have reached here!',
                 };
-              }
+              },
+              getAttribute: (key) => {
+                if (key === 'href') {
+                  return 'LinkB';
+                }
 
-              return {
-                textContent: 'we should not have reached here!',
-              };
+                return '';
+              },
             },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkA';
-              }
-
-              return '';
-            },
-          }, {
-            querySelector: (singleQuery) => {
-              if (singleQuery === '.profile__campaign-dates') {
-                return {
-                  textContent: '2022-02-01',
-                };
-              }
-
-              if (singleQuery === '.profile__campaign-title') {
-                return {
-                  textContent: 'PastCampaign',
-                };
-              }
-
-              return {
-                textContent: 'we should not have reached here!',
-              };
-            },
-            getAttribute: (key) => {
-              if (key === 'href') {
-                return 'LinkB';
-              }
-
-              return '';
-            },
-          }];
+          ];
         }
 
         return [];

@@ -8,22 +8,22 @@ This library fetches contributions from several different sources and saves them
 
 Currently the following sources are supported. Feel free to contribute a PR if you'd like to support another source!
 
-* GitHub
-  * Issues created
-  * Comments on issues
-  * PRs
-  * PR Reviews
-* Bugzilla
-  * Bug reported
-  * Bug commented on
-* MediaWiki
-  * Page edited
-* Discourse
-  * Topic created
-  * Post created
-* Mozilla Community Portal
-  * Participated in event
-  * Participated in campaign
+- GitHub
+  - Issues created
+  - Comments on issues
+  - PRs
+  - PR Reviews
+- Bugzilla
+  - Bug reported
+  - Bug commented on
+- MediaWiki
+  - Page edited
+- Discourse
+  - Topic created
+  - Post created
+- Mozilla Community Portal
+  - Participated in event
+  - Participated in campaign
 
 Each of the sources can be enabled separately. See the configuration section below.
 
@@ -31,16 +31,16 @@ Each of the sources can be enabled separately. See the configuration section bel
 
 The following sources are planned:
 
-* Phabricator
-  * Revision created
-  * Revision updated
+- Phabricator
+  - Revision created
+  - Revision updated
 
 ### Possible future sources
 
 The following sources would be interesting for (at least) Mozilla contributors, however they do not expose an activity API endpoint to easily gather information for a certain user.
 
-* support.mozilla.org
-* Pontoon
+- support.mozilla.org
+- Pontoon
 
 ## Usage
 
@@ -66,7 +66,7 @@ You can configure the different providers with a config you pass into the `fetch
 
 Additionally to the configuration file, we also require some environment variables to be set:
 
-* `GITHUB_TOKEN` with a GitHub token, if the GitHub source is enabled
+- `GITHUB_TOKEN` with a GitHub token, if the GitHub source is enabled
 
 While these tokens could potentially also be included the config, we want to make it hard to mistakenly publish secrets within code.
 
@@ -77,9 +77,9 @@ This section documents all the possible configuration values. For examples see t
 #### General
 
 | Field             | Data Type | Required | Default | Description                                        |
-|-------------------|-----------|----------|---------|----------------------------------------------------|
+| ----------------- | --------- | -------- | ------- | -------------------------------------------------- |
 | `outputFile`      | string    | Yes      | -       | Path to contributions output file                  |
-| `bugzilla`        | Object    | No       | -       | Bugzilla configuration options (see below) |
+| `bugzilla`        | Object    | No       | -       | Bugzilla configuration options (see below)         |
 | `communityPortal` | Object    | No       | -       | Community Portal configuration options (see below) |
 | `discourse`       | Object    | No       | -       | Discourse configuration options (see below)        |
 | `github`          | Object    | No       | -       | GitHub configuration options (see below)           |
@@ -87,20 +87,20 @@ This section documents all the possible configuration values. For examples see t
 
 #### Bugzilla
 
-| Field                 | Data Type | Required | Default                   | Description                                                                                                                |
-|-----------------------|-----------|----------|---------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`             | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.       |
-| `baseUrl`             | string    | Yes      | -                         | API base url without trailing slash (for example: `https://bugzilla.mozilla.org`)                                          |
-| `username`            | string    | Yes      | -                         | Username on MediaWiki                                                                                                      |
-| `stopDate`            | string    | Yes      | -                         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
-| `types`               | Object    | No       | -                         | Object containing the different labels below                                                                               |
-| `types.createdType`   | string    | No       | Created a Bug Report      | Label for entries related to having report a bug/enhancement.                                                              |
-| `types.commentedType` | string    | No       | Commented on a Bug Report | Label for entries related to having commented on a bug/enhancement.                                                        |
+| Field                 | Data Type | Required | Default                   | Description                                                                                                          |
+| --------------------- | --------- | -------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `enabled`             | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely. |
+| `baseUrl`             | string    | Yes      | -                         | API base url without trailing slash (for example: `https://bugzilla.mozilla.org`)                                    |
+| `username`            | string    | Yes      | -                         | Username on MediaWiki                                                                                                |
+| `stopDate`            | string    | Yes      | -                         | `new Date()` parseable string containing a date of possibly earliest contribution to track                           |
+| `types`               | Object    | No       | -                         | Object containing the different labels below                                                                         |
+| `types.createdType`   | string    | No       | Created a Bug Report      | Label for entries related to having report a bug/enhancement.                                                        |
+| `types.commentedType` | string    | No       | Commented on a Bug Report | Label for entries related to having commented on a bug/enhancement.                                                  |
 
 #### Community Portal
 
 | Field               | Data Type | Required | Default                    | Description                                                                                                                |
-|---------------------|-----------|----------|----------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| ------------------- | --------- | -------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `enabled`           | boolean   | Yes      | -                          | Indicates whether this data source is enabled. Alternatively you can also leave off the `communityPortal` object entirely. |
 | `baseUrl`           | string    | Yes      | -                          | Community Portal base url without trailing slash                                                                           |
 | `username`          | string    | Yes      | -                          | Username on the Community Portal                                                                                           |
@@ -109,48 +109,48 @@ This section documents all the possible configuration values. For examples see t
 
 #### Discourse
 
-| Field               | Data Type | Required | Default                   | Description                                                                                                                |
-|---------------------|-----------|----------|---------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`           | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely.       |
-| `baseUrl`           | string    | Yes      | -                         | API base url without trailing slash                                                                                        |
-| `username`          | string    | Yes      | -                         | Username on Discourse                                                                                                      |
-| `topicType`         | string    | No       | Created Discourse Topic   | Label for entries related to having created a new topic.                                                                   |
-| `postType`          | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                           |
+| Field       | Data Type | Required | Default                   | Description                                                                                                          |
+| ----------- | --------- | -------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `enabled`   | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely. |
+| `baseUrl`   | string    | Yes      | -                         | API base url without trailing slash                                                                                  |
+| `username`  | string    | Yes      | -                         | Username on Discourse                                                                                                |
+| `topicType` | string    | No       | Created Discourse Topic   | Label for entries related to having created a new topic.                                                             |
+| `postType`  | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                     |
 
 #### GitHub
 
-| Field                      | Data Type | Required | Default | Description                                                                                                                |
-|----------------------------|-----------|----------|---------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`                  | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `github` object entirely.          |
-| `allowPrivate`             | boolean   | No       | false   | Indicates whether fetching from private repositories is allowed. If not set, the script will throw if you pass a `GITHUB_TOKEN` with private repo scope. In most cases you will not want to have a token with private scope as you do not want to leak any private information in your contribution overview. Please think twice before enabling this config.         |
-| `commentsEnabled`          | boolean   | No       | true    | Indicates whether fetching comments is enabled.                                                                             |
-| `commitsEnabled`           | boolean   | No       | true    | Indicates whether fetching commits is enabled.                                                                             |
-| `issuesEnabled`            | boolean   | No       | true    | Indicates whether fetching issues is enabled.                                                                              |
-| `reviewsEnabled`           | boolean   | No       | true    | Indicates whether fetching reviews is enabled.                                                                             |
-| `username`                 | string    | Yes      | -       | Username on GitHub                                                                                                         |
-| `stopDate`                 | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
-| `filter`                   | string    | Yes      | -       | Regex to apply to each entry to filter for organization/repo names. For example: `"mozilla|firefox"` to only include orgs and repos with either "mozilla" or "firefox" it their name.|
-| `types`                    | Object    | No       | -                                   | Object containing the different labels below                                                                               |
-| `types.commit`             | string    | No       | GitHub Commit                       | Label for entries related to GitHub commits                                                                                |
-| `types.privateCommit`      | string    | No       | Commit in private repository        | Label for entries related to private GitHub commits                                                                        |
-| `types.createdPR`          | string    | No       | Created PR                          | Label for entries related to opening GitHub PRs                                                                            |
-| `types.createdIssue`       | string    | No       | Created Issue Report                | Label for entries related to creating GitHub issues                                                                        |
-| `types.commented`          | string    | No       | Commented on an Issue               | Label for entries related to commenting on an issue                                                              |
-| `types.commentedPR`        | string    | No       | Commented on a Pull Request         | Label for entries related to commenting on a GitHub PR (review)                                                            |
-| `types.approvedPR`         | string    | No       | Approved a Pull Request             | Label for entries related to approving a GitHub PR                                                                         |
-| `types.changesRequestedPR` | string    | No       | Requested changes on a Pull Request | Label for entries related to requesting changes on a GitHub PR                                                             |
-| `types.reviewedPR`         | string    | No       | Reviewed a Pull Request             | Label for entries related to reviewing a GitHub PR (fallback)                                                              |
-| `delayMsPerRequest`        | number    | No       | 2000                                | Delay between each request to GitHub. You might hit rate limiting if you set this lower than default.                      |
+| Field                      | Data Type | Required | Default                             | Description                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------- | --------- | -------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `enabled`                  | boolean   | Yes      | -                                   | Indicates whether this data source is enabled. Alternatively you can also leave off the `github` object entirely.                                                                                                                                                                                                                                             |
+| `allowPrivate`             | boolean   | No       | false                               | Indicates whether fetching from private repositories is allowed. If not set, the script will throw if you pass a `GITHUB_TOKEN` with private repo scope. In most cases you will not want to have a token with private scope as you do not want to leak any private information in your contribution overview. Please think twice before enabling this config. |
+| `commentsEnabled`          | boolean   | No       | true                                | Indicates whether fetching comments is enabled.                                                                                                                                                                                                                                                                                                               |
+| `commitsEnabled`           | boolean   | No       | true                                | Indicates whether fetching commits is enabled.                                                                                                                                                                                                                                                                                                                |
+| `issuesEnabled`            | boolean   | No       | true                                | Indicates whether fetching issues is enabled.                                                                                                                                                                                                                                                                                                                 |
+| `reviewsEnabled`           | boolean   | No       | true                                | Indicates whether fetching reviews is enabled.                                                                                                                                                                                                                                                                                                                |
+| `username`                 | string    | Yes      | -                                   | Username on GitHub                                                                                                                                                                                                                                                                                                                                            |
+| `stopDate`                 | string    | Yes      | -                                   | `new Date()` parseable string containing a date of possibly earliest contribution to track                                                                                                                                                                                                                                                                    |
+| `filter`                   | string    | Yes      | -                                   | Regex to apply to each entry to filter for organization/repo names. For example: `"mozilla                                                                                                                                                                                                                                                                    | firefox"` to only include orgs and repos with either "mozilla" or "firefox" it their name. |
+| `types`                    | Object    | No       | -                                   | Object containing the different labels below                                                                                                                                                                                                                                                                                                                  |
+| `types.commit`             | string    | No       | GitHub Commit                       | Label for entries related to GitHub commits                                                                                                                                                                                                                                                                                                                   |
+| `types.privateCommit`      | string    | No       | Commit in private repository        | Label for entries related to private GitHub commits                                                                                                                                                                                                                                                                                                           |
+| `types.createdPR`          | string    | No       | Created PR                          | Label for entries related to opening GitHub PRs                                                                                                                                                                                                                                                                                                               |
+| `types.createdIssue`       | string    | No       | Created Issue Report                | Label for entries related to creating GitHub issues                                                                                                                                                                                                                                                                                                           |
+| `types.commented`          | string    | No       | Commented on an Issue               | Label for entries related to commenting on an issue                                                                                                                                                                                                                                                                                                           |
+| `types.commentedPR`        | string    | No       | Commented on a Pull Request         | Label for entries related to commenting on a GitHub PR (review)                                                                                                                                                                                                                                                                                               |
+| `types.approvedPR`         | string    | No       | Approved a Pull Request             | Label for entries related to approving a GitHub PR                                                                                                                                                                                                                                                                                                            |
+| `types.changesRequestedPR` | string    | No       | Requested changes on a Pull Request | Label for entries related to requesting changes on a GitHub PR                                                                                                                                                                                                                                                                                                |
+| `types.reviewedPR`         | string    | No       | Reviewed a Pull Request             | Label for entries related to reviewing a GitHub PR (fallback)                                                                                                                                                                                                                                                                                                 |
+| `delayMsPerRequest`        | number    | No       | 2000                                | Delay between each request to GitHub. You might hit rate limiting if you set this lower than default.                                                                                                                                                                                                                                                         |
 
 #### MediaWiki
 
-| Field               | Data Type | Required | Default   | Description                                                                                                                |
-|---------------------|-----------|----------|-----------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`           | boolean   | Yes      | -         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.       |
-| `baseUrl`           | string    | Yes      | -         | API base url without trailing slash                                                                                        |
-| `username`          | string    | Yes      | -         | Username on MediaWiki                                                                                                      |
-| `editType`          | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                                     |
-| `stopDate`          | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                 |
+| Field      | Data Type | Required | Default   | Description                                                                                                          |
+| ---------- | --------- | -------- | --------- | -------------------------------------------------------------------------------------------------------------------- |
+| `enabled`  | boolean   | Yes      | -         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely. |
+| `baseUrl`  | string    | Yes      | -         | API base url without trailing slash                                                                                  |
+| `username` | string    | Yes      | -         | Username on MediaWiki                                                                                                |
+| `editType` | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                               |
+| `stopDate` | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                           |
 
 ### Sample configuration
 
@@ -198,7 +198,7 @@ const config = {
       approvedPR: 'Approved a Pull Request',
       changesRequestedPR: 'Requested changes on a Pull Request',
       reviewedPR: 'Reviewed a Pull Request',
-    }
+    },
   },
 };
 ```
