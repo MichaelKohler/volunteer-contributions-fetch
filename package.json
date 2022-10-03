@@ -13,14 +13,14 @@
     "@octokit/rest": "^19.0.4",
     "axios": "^0.27.2",
     "debug": "^4.3.4",
-    "jsdom": "^20.0.0",
+    "jsdom": "^20.0.1",
     "xml2js": "^0.4.23"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.0.3",
-    "@commitlint/config-angular": "^17.0.3",
-    "ava": "^4.3.1",
-    "eslint": "^8.22.0",
+    "@commitlint/cli": "^17.1.2",
+    "@commitlint/config-angular": "^17.1.0",
+    "ava": "^4.3.3",
+    "eslint": "^8.24.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "husky": "^8.0.1",
     "nyc": "^15.1.0",
@@ -34,7 +34,9 @@
     "semantic-release": "semantic-release"
   },
   "release": {
-    "branches": ["main"]
+    "branches": [
+      "main"
+    ]
   },
   "nyc": {
     "check-coverage": true,
