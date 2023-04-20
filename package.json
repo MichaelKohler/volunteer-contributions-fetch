@@ -46,6 +46,9 @@
       "main"
     ]
   },
+  "publishConfig": {
+    "provenance": true
+  },
   "nyc": {
     "check-coverage": true,
     "statements": 90,
