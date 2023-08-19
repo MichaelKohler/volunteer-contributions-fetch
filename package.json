@@ -39,7 +39,8 @@
     "test": "nyc ava"
   },
   "prettier": {
-    "singleQuote": true
+    "singleQuote": true,
+    "trailingComma": "es5"
   },
   "release": {
     "branches": [
