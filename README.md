@@ -109,13 +109,14 @@ This section documents all the possible configuration values. For examples see t
 
 #### Discourse
 
-| Field       | Data Type | Required | Default                   | Description                                                                                                          |
-| ----------- | --------- | -------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `enabled`   | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely. |
-| `baseUrl`   | string    | Yes      | -                         | API base url without trailing slash                                                                                  |
-| `username`  | string    | Yes      | -                         | Username on Discourse                                                                                                |
-| `topicType` | string    | No       | Created Discourse Topic   | Label for entries related to having created a new topic.                                                             |
-| `postType`  | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                     |
+| Field             | Data Type | Required | Default                   | Description                                                                                                                     |
+| ----------------- | --------- | -------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`         | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely.            |
+| `baseUrl`         | string    | Yes      | -                         | API base url without trailing slash                                                                                             |
+| `username`        | string    | Yes      | -                         | Username on Discourse                                                                                                           |
+| `topicType`       | string    | No       | Created Discourse Topic   | Label for entries related to having created a new topic.                                                                        |
+| `postType`        | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                                |
+| `keepDeletedPost` | boolean   | No       | false                     | If a post gets deleted and can't be queried anymore, setting this to `true` will not delete it from the previous contributions. |
 
 #### GitHub
 
@@ -176,6 +177,7 @@ const config = {
     username: 'mkohler',
     topicType: 'Created Discourse Topic',
     postType: 'Posted on Discourse Topic',
+    keepDeletedPost: true,
   },
   mediaWiki: {
     enabled: true,
