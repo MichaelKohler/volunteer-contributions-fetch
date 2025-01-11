@@ -27,15 +27,11 @@ Currently the following sources are supported. Feel free to contribute a PR if y
 
 Each of the sources can be enabled separately. See the configuration section below.
 
-### Planned Sources
-
-The following sources are planned:
+### Possible future sources
 
 - Phabricator
   - Revision created
   - Revision updated
-
-### Possible future sources
 
 The following sources would be interesting for (at least) Mozilla contributors, however they do not expose an activity API endpoint to easily gather information for a certain user.
 
@@ -62,7 +58,7 @@ fetchAll(config);
 
 ### Usage without output file
 
-This can also be used without having to rely on an `outputFile`. For this case the `fetchAll` function returns all contributions. Additionally you can also pass existing contributions to the function and these will be considered as well. The return value and the parameter of the function works the same as having an `outputFile`.
+This can also be used without having to rely on an `outputFile`. For this case the `fetchAll` function returns all contributions. Additionally you can also pass existing contributions to the function and these will be considered as well. The return value and the parameter of the function work the same as having an `outputFile`.
 
 ```js
 const { fetchAll } = require('volunteer-contributions-fetch');
@@ -74,7 +70,7 @@ const results = fetchAll(config, existingContributions);
 // results is now all existing contributions plus any newly fetched contribution
 ```
 
-Note that passing existing contributions this way will be ignored if a `outputFile` is used.
+Note that passing existing contributions this way will be ignored if a `outputFile` is used. Instead the existing contributions will be read from the `outputFile` if it already exists.
 
 ## Configuration
 
