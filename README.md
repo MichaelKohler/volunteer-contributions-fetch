@@ -49,7 +49,7 @@ npm install volunteer-contribution-fetch
 Then you can create a file in your project which runs the fetch operation and provides the necessary config:
 
 ```js
-const { fetchAll } = require('volunteer-contributions-fetch');
+import { fetchAll } from 'volunteer-contributions-fetch';
 
 const config = {}; // See below for documentation and a sample config
 
@@ -61,7 +61,7 @@ fetchAll(config);
 This can also be used without having to rely on an `outputFile`. For this case the `fetchAll` function returns all contributions. Additionally you can also pass existing contributions to the function and these will be considered as well. The return value and the parameter of the function work the same as having an `outputFile`.
 
 ```js
-const { fetchAll } = require('volunteer-contributions-fetch');
+import { fetchAll } from 'volunteer-contributions-fetch';
 
 const config = {}; // See below for documentation and a sample config
 const existingContributions = [{ ... }];

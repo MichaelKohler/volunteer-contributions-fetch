@@ -1,5 +1,1 @@
-const { fetchAll } = require('./lib/fetch');
-
-module.exports = {
-  fetchAll,
-};
+export { fetchAll } from './lib/fetch';

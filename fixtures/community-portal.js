@@ -1,4 +1,4 @@
-const allData = {
+export const allData = {
   window: {
     document: {
       querySelectorAll: (query) => {
@@ -122,7 +122,7 @@ const allData = {
   },
 };
 
-const noData = {
+export const noData = {
   window: {
     document: {
       querySelectorAll: (query) => {
@@ -140,7 +140,7 @@ const noData = {
   },
 };
 
-const futureData = {
+export const futureData = {
   window: {
     document: {
       querySelectorAll: (query) => {
@@ -262,10 +262,4 @@ const futureData = {
       },
     },
   },
-};
-
-module.exports = {
-  allData,
-  noData,
-  futureData,
 };

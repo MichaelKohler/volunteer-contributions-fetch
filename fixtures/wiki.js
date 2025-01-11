@@ -1,4 +1,4 @@
-const firstMonth = `
+export const firstMonth = `
   <rss version="2.0">
     <channel>
       <title>MozillaWiki - User contributions [en]</title>
@@ -29,7 +29,7 @@ const firstMonth = `
   </rss>
 `;
 
-const secondMonth = `
+export const secondMonth = `
   <rss version="2.0">
     <channel>
       <title>MozillaWiki - User contributions [en]</title>
@@ -50,8 +50,3 @@ const secondMonth = `
     </channel>
   </rss>
 `;
-
-module.exports = {
-  firstMonth,
-  secondMonth,
-};
