@@ -33,7 +33,7 @@
   "scripts": {
     "prepare": "husky install",
     "eslint": "eslint .",
-    "example": "DEBUG=contributions:* node example/index.js",
+    "example": "DEBUG=contributions:* node --env-file .env example/index.js",
     "prettier": "prettier --check .",
     "prettier:format": "prettier --write .",
     "semantic-release": "semantic-release",
