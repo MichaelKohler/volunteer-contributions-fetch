@@ -236,7 +236,7 @@ npm test
 
 ### Testing changes
 
-You can also add a temporary file with a test config as well as the call to `fetchAll` if you would like to test changes within this project. A sample config can be found in the configuration section above. Please make sure to not include that config file when committing!
+You can use `npm run example` which uses `fetchAll` if you would like to test changes within this project. The configuration for this can be adjusted in `example/index.js`. A full sample config can be found in the configuration section above. Please make sure to not include testing config file changes when committing! The file is not ignored to make it so that new checkouts do not have to copy around a file first.
 
 ### Deployments
 
