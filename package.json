@@ -31,13 +31,14 @@
     "vitest": "^2.1.8"
   },
   "scripts": {
-    "prepare": "husky install",
+    "prepare": "husky",
     "eslint": "eslint .",
     "example": "DEBUG=contributions:* node --env-file .env example/index.js",
     "prettier": "prettier --check .",
     "prettier:format": "prettier --write .",
     "semantic-release": "semantic-release",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prettier": {
     "singleQuote": true,
