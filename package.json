@@ -11,23 +11,23 @@
   "main": "index.js",
   "type": "module",
   "dependencies": {
-    "@octokit/rest": "^20.0.1",
-    "axios": "^1.4.0",
+    "@octokit/rest": "^21.1.0",
+    "axios": "^1.7.9",
     "debug": "^4.3.4",
-    "jsdom": "^22.1.0",
+    "jsdom": "^26.0.0",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "^17.7.1",
-    "@commitlint/config-angular": "^17.7.0",
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-angular": "^19.7.0",
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^8.47.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
-    "husky": "^8.0.3",
-    "prettier": "^3.0.2",
-    "semantic-release": "^21.0.7",
+    "eslint-plugin-prettier": "^5.2.2",
+    "husky": "^9.1.7",
+    "prettier": "^3.4.2",
+    "semantic-release": "^24.2.1",
     "vitest": "^2.1.8"
   },
   "scripts": {
