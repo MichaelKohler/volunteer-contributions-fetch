@@ -18,6 +18,7 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
+      - run: npm run eslint
       - run: npm test
       - name: Release
         env:
