@@ -20,16 +20,15 @@
   "devDependencies": {
     "@commitlint/cli": "^17.7.1",
     "@commitlint/config-angular": "^17.7.0",
-    "ava": "^5.3.1",
+    "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^8.47.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "husky": "^8.0.3",
-    "nyc": "^15.1.0",
     "prettier": "^3.0.2",
     "semantic-release": "^21.0.7",
-    "sinon": "^15.2.0"
+    "vitest": "^2.1.8"
   },
   "scripts": {
     "prepare": "husky install",
@@ -38,7 +37,7 @@
     "prettier": "prettier --check .",
     "prettier:format": "prettier --write .",
     "semantic-release": "semantic-release",
-    "test": "nyc ava"
+    "test": "vitest"
   },
   "prettier": {
     "singleQuote": true,
