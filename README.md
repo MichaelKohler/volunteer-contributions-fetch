@@ -24,6 +24,8 @@ Currently the following sources are supported. Feel free to contribute a PR if y
 - Mozilla Community Portal
   - Participated in event
   - Participated in campaign
+- OpenStreetMap
+  - Changesets
 
 Each of the sources can be enabled separately. See the configuration section below.
 
@@ -165,6 +167,14 @@ This section documents all the possible configuration values. For examples see t
 | `editType` | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                               |
 | `stopDate` | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                           |
 
+#### OpenStreetMaps
+
+| Field         | Data Type | Required | Default | Description                                                                                                    |
+| ------------- | --------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `enabled`     | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `osm` object entirely. |
+| `displayName` | string    | Yes      | -       | Username on OpenStreetMaps                                                                                     |
+| `stopDate`    | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                     |
+
 ### Sample configuration
 
 ```js
@@ -213,6 +223,11 @@ const config = {
       changesRequestedPR: 'Requested changes on a Pull Request',
       reviewedPR: 'Reviewed a Pull Request',
     },
+  },
+  osm: {
+    enabled: true,
+    displayName: 'foo',
+    stopDate: '2010-01-01',
   },
 };
 ```
