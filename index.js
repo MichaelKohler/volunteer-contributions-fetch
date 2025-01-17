@@ -1,1 +1,1 @@
-export { fetchAll } from './lib/fetch';
+export { fetchAll } from './lib/fetch.js';
