@@ -245,7 +245,6 @@ npm ci
 ### Tests
 
 ```bash
-npm run eslint
 npm test
 ```
 
@@ -258,6 +257,14 @@ cp .env.example .env
 ```
 
 You then can use `npm run example` which uses `fetchAll` if you would like to test changes within this project. The configuration for this can be adjusted in `example/index.js`. A full sample config can be found in the configuration section above. Please make sure to not include testing config file changes when committing! The file is not ignored to make it so that new checkouts do not have to copy around a file first.
+
+### Linting
+
+```bash
+npm run eslint
+```
+
+Note that due to the AirBnB config we are still using ESLint 8.
 
 ### Deployments
 
