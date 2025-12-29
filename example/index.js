@@ -32,5 +32,4 @@ const existingContributions = [
 
 const contributions = await fetchAll(config, existingContributions);
 
-// eslint-disable-next-line no-console
 console.log(contributions);

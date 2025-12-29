@@ -264,8 +264,6 @@ You then can use `npm run example` which uses `fetchAll` if you would like to te
 npm run eslint
 ```
 
-Note that due to the AirBnB config we are still using ESLint 8.
-
 ### Deployments
 
 Please use [Angular Commit Message Conventions](https://github.com/angular/angular/blob/master/CONTRIBUTING.md#-commit-message-format) when contributing to this project, as depending on the commit message the GitHub Action will directly publish a new version of the package.
