@@ -18,8 +18,8 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-angular": "^20.5.0",
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-angular": "^21.0.1",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^4.1.0",
