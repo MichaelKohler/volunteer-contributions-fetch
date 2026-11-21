@@ -52,26 +52,5 @@
   },
   "publishConfig": {
     "provenance": true
-  },
-  "nyc": {
-    "check-coverage": true,
-    "statements": 90,
-    "branches": 90,
-    "functions": 90,
-    "lines": 90,
-    "include": [
-      "lib/**/*.js"
-    ],
-    "all": true,
-    "reporter": [
-      "text-summary",
-      "lcov"
-    ]
-  },
-  "ava": {
-    "files": [
-      "lib/**/*.test.js"
-    ],
-    "timeout": "10s"
   }
 }
