@@ -101,6 +101,8 @@ This section documents all the possible configuration values. For examples see t
 | `mediaWiki`       | Object    | No       | -       | MediaWiki configuration options (see below)                                                                        |
 | `osm`             | Object    | No       | -       | OpenStreetMap configuration options (see below)                                                                    |
 
+The fields marked as required below are only required if the source is enabled. To disable a source, `{ enabled: false }` is enough and any other fields are ignored.
+
 #### Bugzilla
 
 | Field                 | Data Type | Required | Default                   | Description                                                                                                         |
