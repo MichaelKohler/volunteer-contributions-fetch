@@ -76,7 +76,7 @@ Note that passing existing contributions this way will be ignored if a `outputFi
 
 ## Configuration
 
-You can configure the different providers with a config you pass into the `fetchAll` function call. These config parameters are outlined below. The config gets validated and you might get an error if you haven't specified all necessary properties.
+You can configure the different providers with a config you pass into the `fetchAll` function call. These config parameters are outlined below. The config gets validated and you might get an error if you haven't specified all necessary properties or if the config contains unknown top-level keys (for example a misspelled source name).
 
 Additionally to the configuration file, we also require some environment variables to be set:
 
