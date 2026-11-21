@@ -263,3 +263,44 @@ export const futureData = {
     },
   },
 };
+
+const duplicateEvent = {
+  querySelector: (singleQuery) => {
+    if (singleQuery === '.profile__event-time') {
+      return {
+        textContent: '2022-08-08',
+      };
+    }
+
+    if (singleQuery === '.profile__event-title') {
+      return {
+        textContent: 'EventA',
+      };
+    }
+
+    return {
+      textContent: 'we should not have reached here!',
+    };
+  },
+  getAttribute: (key) => {
+    if (key === 'href') {
+      return 'LinkA';
+    }
+
+    return '';
+  },
+};
+
+export const duplicateData = {
+  window: {
+    document: {
+      querySelectorAll: (query) => {
+        if (query === '.profile__event') {
+          return [duplicateEvent, { ...duplicateEvent }];
+        }
+
+        return [];
+      },
+    },
+  },
+};
