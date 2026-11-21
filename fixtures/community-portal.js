@@ -1,3 +1,11 @@
+// Mirror the text the Community Portal profile template renders, including the
+// surrounding whitespace.
+const eventTime = (time) => `\n${'\t'.repeat(10)}${time}${'\t'.repeat(9)}`;
+const campaignDates = (start, end) =>
+  end
+    ? `\n${'\t'.repeat(9)}${start}${'\t'.repeat(10)}-\n${'\t'.repeat(11)}${end}${'\t'.repeat(8)}`
+    : `\n${'\t'.repeat(9)}${start}${'\t'.repeat(8)}`;
+
 export const allData = {
   window: {
     document: {
@@ -8,7 +16,7 @@ export const allData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__event-time') {
                   return {
-                    textContent: '2022-08-08',
+                    textContent: eventTime('August 08, 2022 ∙ 18:00'),
                   };
                 }
 
@@ -34,7 +42,7 @@ export const allData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__event-time') {
                   return {
-                    textContent: '2022-08-11',
+                    textContent: eventTime('August 11, 2022 ∙ 09:30'),
                   };
                 }
 
@@ -65,7 +73,7 @@ export const allData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__campaign-dates') {
                   return {
-                    textContent: '2022-01-01',
+                    textContent: campaignDates('January 01 2022'),
                   };
                 }
 
@@ -91,7 +99,7 @@ export const allData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__campaign-dates') {
                   return {
-                    textContent: '2022-02-01',
+                    textContent: campaignDates('February 01', 'March 15 2022'),
                   };
                 }
 
@@ -150,7 +158,7 @@ export const futureData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__event-time') {
                   return {
-                    textContent: '2999-08-08',
+                    textContent: eventTime('August 08, 2999 ∙ 18:00'),
                   };
                 }
 
@@ -176,7 +184,7 @@ export const futureData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__event-time') {
                   return {
-                    textContent: '2022-08-11',
+                    textContent: eventTime('August 11, 2022 ∙ 09:30'),
                   };
                 }
 
@@ -207,7 +215,10 @@ export const futureData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__campaign-dates') {
                   return {
-                    textContent: '2999-01-01',
+                    textContent: campaignDates(
+                      'January 01',
+                      'February 01 2999'
+                    ),
                   };
                 }
 
@@ -233,7 +244,7 @@ export const futureData = {
               querySelector: (singleQuery) => {
                 if (singleQuery === '.profile__campaign-dates') {
                   return {
-                    textContent: '2022-02-01',
+                    textContent: campaignDates('February 01', 'March 15 2022'),
                   };
                 }
 
@@ -268,7 +279,7 @@ const duplicateEvent = {
   querySelector: (singleQuery) => {
     if (singleQuery === '.profile__event-time') {
       return {
-        textContent: '2022-08-08',
+        textContent: eventTime('August 08, 2022 ∙ 18:00'),
       };
     }
 
@@ -309,7 +320,7 @@ const duplicateCampaign = {
   querySelector: (singleQuery) => {
     if (singleQuery === '.profile__campaign-dates') {
       return {
-        textContent: 'Feb 01, 2022 - Mar 01',
+        textContent: campaignDates('February 01', 'March 01 2022'),
       };
     }
 
@@ -338,6 +349,59 @@ export const duplicateCampaignData = {
       querySelectorAll: (query) => {
         if (query === '.profile__campaign') {
           return [duplicateCampaign, { ...duplicateCampaign }];
+        }
+
+        return [];
+      },
+    },
+  },
+};
+
+function campaignEntity(dates, title) {
+  return {
+    querySelector: (singleQuery) => {
+      if (singleQuery === '.profile__campaign-dates') {
+        return { textContent: dates };
+      }
+
+      if (singleQuery === '.profile__campaign-title') {
+        return { textContent: title };
+      }
+
+      return { textContent: 'we should not have reached here!' };
+    },
+    getAttribute: (key) => (key === 'href' ? `Link${title}` : ''),
+  };
+}
+
+export const crossYearCampaignData = {
+  window: {
+    document: {
+      querySelectorAll: (query) => {
+        if (query === '.profile__campaign') {
+          return [
+            campaignEntity(
+              campaignDates('December 01', 'January 15 2022'),
+              'CrossYearCampaign'
+            ),
+          ];
+        }
+
+        return [];
+      },
+    },
+  },
+};
+
+export const unparseableDateData = {
+  window: {
+    document: {
+      querySelectorAll: (query) => {
+        if (query === '.profile__campaign') {
+          return [
+            campaignEntity(campaignDates('01 janvier 2022'), 'FrenchCampaign'),
+            campaignEntity(campaignDates('January 01 2022'), 'ValidCampaign'),
+          ];
         }
 
         return [];
