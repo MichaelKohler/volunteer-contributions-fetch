@@ -24,5 +24,7 @@ jobs:
         run: npm ci
       - name: Linting
         run: npm run eslint
+      - name: Formatting
+        run: npm run prettier
       - name: Test
         run: npm test
