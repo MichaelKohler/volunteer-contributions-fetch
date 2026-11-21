@@ -304,3 +304,44 @@ export const duplicateData = {
     },
   },
 };
+
+const duplicateCampaign = {
+  querySelector: (singleQuery) => {
+    if (singleQuery === '.profile__campaign-dates') {
+      return {
+        textContent: 'Feb 01, 2022 - Mar 01',
+      };
+    }
+
+    if (singleQuery === '.profile__campaign-title') {
+      return {
+        textContent: 'CampaignA',
+      };
+    }
+
+    return {
+      textContent: 'we should not have reached here!',
+    };
+  },
+  getAttribute: (key) => {
+    if (key === 'href') {
+      return 'LinkB';
+    }
+
+    return '';
+  },
+};
+
+export const duplicateCampaignData = {
+  window: {
+    document: {
+      querySelectorAll: (query) => {
+        if (query === '.profile__campaign') {
+          return [duplicateCampaign, { ...duplicateCampaign }];
+        }
+
+        return [];
+      },
+    },
+  },
+};
