@@ -4,7 +4,7 @@ import prettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 
 export default defineConfig([
-  globalIgnores(['.nyc_output/**/*', 'coverage/**/*', 'node_modules']),
+  globalIgnores(['coverage/**/*', 'node_modules']),
   js.configs.recommended,
   prettierRecommended,
   {
