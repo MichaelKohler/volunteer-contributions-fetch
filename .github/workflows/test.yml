@@ -8,6 +8,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24, 26]
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -16,7 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7.1.0
         with:
-          node-version: 24
+          node-version: ${{ matrix.node-version }}
       - name: Install Dependencies
         run: npm ci
       - name: Linting
