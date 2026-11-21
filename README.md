@@ -9,6 +9,7 @@ This library fetches contributions from several different sources and saves them
 Currently the following sources are supported. Feel free to contribute a PR if you'd like to support another source!
 
 - GitHub
+  - Commits
   - Issues created
   - Comments on issues
   - PRs
@@ -45,7 +46,7 @@ The following sources would be interesting for (at least) Mozilla contributors, 
 First install the package from npm:
 
 ```bash
-npm install volunteer-contribution-fetch
+npm install volunteer-contributions-fetch
 ```
 
 Then you can create a file in your project which runs the fetch operation and provides the necessary config:
@@ -68,7 +69,7 @@ import { fetchAll } from 'volunteer-contributions-fetch';
 const config = {}; // See below for documentation and a sample config
 const existingContributions = [{ ... }];
 
-const results = fetchAll(config, existingContributions);
+const results = await fetchAll(config, existingContributions);
 // results is now all existing contributions plus any newly fetched contribution
 ```
 
@@ -98,18 +99,19 @@ This section documents all the possible configuration values. For examples see t
 | `discourse`       | Object    | No       | -       | Discourse configuration options (see below)                                                                        |
 | `github`          | Object    | No       | -       | GitHub configuration options (see below)                                                                           |
 | `mediaWiki`       | Object    | No       | -       | MediaWiki configuration options (see below)                                                                        |
+| `osm`             | Object    | No       | -       | OpenStreetMap configuration options (see below)                                                                    |
 
 #### Bugzilla
 
-| Field                 | Data Type | Required | Default                   | Description                                                                                                          |
-| --------------------- | --------- | -------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `enabled`             | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely. |
-| `baseUrl`             | string    | Yes      | -                         | API base url without trailing slash (for example: `https://bugzilla.mozilla.org`)                                    |
-| `username`            | string    | Yes      | -                         | Username on MediaWiki                                                                                                |
-| `stopDate`            | string    | Yes      | -                         | `new Date()` parseable string containing a date of possibly earliest contribution to track                           |
-| `types`               | Object    | No       | -                         | Object containing the different labels below                                                                         |
-| `types.createdType`   | string    | No       | Created a Bug Report      | Label for entries related to having report a bug/enhancement.                                                        |
-| `types.commentedType` | string    | No       | Commented on a Bug Report | Label for entries related to having commented on a bug/enhancement.                                                  |
+| Field                 | Data Type | Required | Default                   | Description                                                                                                         |
+| --------------------- | --------- | -------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `enabled`             | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `bugzilla` object entirely. |
+| `baseUrl`             | string    | Yes      | -                         | API base url without trailing slash (for example: `https://bugzilla.mozilla.org`)                                   |
+| `username`            | string    | Yes      | -                         | Username on Bugzilla                                                                                                |
+| `stopDate`            | string    | Yes      | -                         | `new Date()` parseable string containing a date of possibly earliest contribution to track                          |
+| `types`               | Object    | No       | -                         | Object containing the different labels below                                                                        |
+| `types.createdType`   | string    | No       | Created a Bug Report      | Label for entries related to having report a bug/enhancement.                                                       |
+| `types.commentedType` | string    | No       | Commented on a Bug Report | Label for entries related to having commented on a bug/enhancement.                                                 |
 
 #### Community Portal
 
@@ -179,7 +181,7 @@ This section documents all the possible configuration values. For examples see t
 
 ```js
 const config = {
-  outputFile: `${__dirname}/_data/contributions.json`,
+  outputFile: `${import.meta.dirname}/_data/contributions.json`,
   bugzilla: {
     enabled: true,
     baseUrl: 'https://bugzilla.mozilla.org',
