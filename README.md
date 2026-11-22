@@ -115,6 +115,7 @@ The fields marked as required below are only required if the source is enabled. 
 | `types.createdType`   | string    | No       | Created a Bug Report      | Label for entries related to having report a bug/enhancement.                                                       |
 | `types.commentedType` | string    | No       | Commented on a Bug Report | Label for entries related to having commented on a bug/enhancement.                                                 |
 | `delayMsPerRequest`   | number    | No       | 500                       | Delay between each request to Bugzilla. You might hit rate limiting if you set this lower than default.             |
+| `tagRules`            | Array     | No       | -                         | Rules to tag contributions, see [Tagging](#tagging).                                                                |
 
 #### Community Portal
 
@@ -125,6 +126,7 @@ The fields marked as required below are only required if the source is enabled. 
 | `username`          | string    | Yes      | -                          | Username on the Community Portal                                                                                           |
 | `participationType` | string    | No       | Participated in an event   | Label for entries related to having participated in an event.                                                              |
 | `campaignType`      | string    | No       | Participated in a campaign | Label for entries related to having participated in a campaign                                                             |
+| `tagRules`          | Array     | No       | -                          | Rules to tag contributions, see [Tagging](#tagging).                                                                       |
 
 #### Discourse
 
@@ -137,6 +139,7 @@ The fields marked as required below are only required if the source is enabled. 
 | `postType`          | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                                |
 | `keepDeletedPost`   | boolean   | No       | false                     | If a post gets deleted and can't be queried anymore, setting this to `true` will not delete it from the previous contributions. |
 | `delayMsPerRequest` | number    | No       | 500                       | Delay between each request to Discourse. You might hit rate limiting if you set this lower than default.                        |
+| `tagRules`          | Array     | No       | -                         | Rules to tag contributions, see [Tagging](#tagging).                                                                            |
 
 #### GitHub
 
@@ -163,6 +166,7 @@ The fields marked as required below are only required if the source is enabled. 
 | `types.changesRequestedPR`  | string    | No       | Requested changes on a Pull Request | Label for entries related to requesting changes on a GitHub PR                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `types.reviewedPR`          | string    | No       | Reviewed a Pull Request             | Label for entries related to reviewing a GitHub PR (fallback)                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `delayMsPerRequest`         | number    | No       | 2000                                | Delay between each request to GitHub. You might hit rate limiting if you set this lower than default.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `tagRules`                  | Array     | No       | -                                   | Rules to tag contributions, see [Tagging](#tagging). Each rule additionally requires a `pattern`: a regex matched against the link of the contribution. Rules only apply to contributions already accepted by `filter`, and never to contributions in private repositories.                                                                                                                                                                                                                            |
 
 #### MediaWiki
 
@@ -174,6 +178,7 @@ The fields marked as required below are only required if the source is enabled. 
 | `editType`          | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                                                                            |
 | `stopDate`          | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                                                        |
 | `delayMsPerRequest` | number    | No       | 2000      | Delay between each request to MediaWiki. You might hit rate limiting if you set this lower than default.                                                          |
+| `tagRules`          | Array     | No       | -         | Rules to tag contributions, see [Tagging](#tagging).                                                                                                              |
 
 #### OpenStreetMaps
 
@@ -183,6 +188,43 @@ The fields marked as required below are only required if the source is enabled. 
 | `displayName`       | string    | Yes      | -       | Username on OpenStreetMaps                                                                                     |
 | `stopDate`          | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                     |
 | `delayMsPerRequest` | number    | No       | 1000    | Delay between each request to OpenStreetMap. You might hit rate limiting if you set this lower than default.   |
+| `tagRules`          | Array     | No       | -       | Rules to tag contributions, see [Tagging](#tagging).                                                           |
+
+#### Tagging
+
+Every source accepts a `tagRules` array to add tags to its contributions, for example to distinguish volunteer work from work done for an employer. Each contribution is matched against the rules in order and gets the tags of the first matching rule. Tags never change which contributions are fetched, a contribution matching no rule is saved without tags.
+
+| Field                 | Data Type | Required    | Default | Description                                                                                                                                          |
+| --------------------- | --------- | ----------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tags`                | string[]  | Yes         | -       | Tags to add to matching contributions.                                                                                                               |
+| `pattern`             | string    | GitHub only | -       | Regex matched against the link of the contribution. Only available and required for the GitHub source.                                               |
+| `dateRange`           | Object    | No          | -       | Only match contributions created within this range. Without a range, the rule matches contributions of any date.                                     |
+| `dateRange.startDate` | string    | No          | -       | `new Date()` parseable string, contributions created at or after this date match. Leave it off to have no lower bound.                               |
+| `dateRange.endDate`   | string    | No          | -       | `new Date()` parseable string, contributions created at or before this date match. Leave it off to have no upper bound, e.g. for a current employer. |
+
+Matching contributions get a `tags` array in the output, others have no `tags` property. Rules are applied to saved contributions of enabled sources on every run as well, so changing rules updates existing contributions without fetching them again.
+
+```js
+github: {
+  // ...
+  filter: 'mozilla|common-voice',
+  tagRules: [
+    {
+      pattern: 'github.com/mozilla/',
+      tags: ['employed'],
+      dateRange: { startDate: '2020-03-01', endDate: '2024-06-30' },
+    },
+    { pattern: 'common-voice', tags: ['volunteer'] },
+  ],
+},
+discourse: {
+  // ...
+  tagRules: [
+    { tags: ['employed'], dateRange: { startDate: '2020-03-01' } },
+    { tags: ['volunteer'] },
+  ],
+},
+```
 
 ### Sample configuration
 
