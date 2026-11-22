@@ -10,6 +10,7 @@ const config = {
     types: {
       commit: 'GitHub Commit',
       privateCommit: 'Commit in private repository',
+      privateContribution: 'Contribution in private repository',
       createdPR: 'Created PR',
       createdIssue: 'Created Issue Report',
       commentedPR: 'Commented on a Pull Request',
