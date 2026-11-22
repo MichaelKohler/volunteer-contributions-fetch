@@ -163,13 +163,13 @@ The fields marked as required below are only required if the source is enabled. 
 
 #### MediaWiki
 
-| Field      | Data Type | Required | Default   | Description                                                                                                                                                                    |
-| ---------- | --------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `enabled`  | boolean   | Yes      | -         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.                                                           |
-| `baseUrl`  | string    | Yes      | -         | `feedcontributions` API URL including its query string, e.g. `https://wiki.mozilla.org/api.php?action=feedcontributions`. `&user=`, `&year=` and `&month=` are appended to it. |
-| `username` | string    | Yes      | -         | Username on MediaWiki                                                                                                                                                          |
-| `editType` | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                                                                                         |
-| `stopDate` | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                                                                     |
+| Field      | Data Type | Required | Default   | Description                                                                                                                                                       |
+| ---------- | --------- | -------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`  | boolean   | Yes      | -         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.                                              |
+| `baseUrl`  | string    | Yes      | -         | URL of the wiki's `api.php`, e.g. `https://wiki.mozilla.org/api.php`. Any query string is ignored, so the previous `?action=feedcontributions` URLs keep working. |
+| `username` | string    | Yes      | -         | Username on MediaWiki                                                                                                                                             |
+| `editType` | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                                                                            |
+| `stopDate` | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                                                        |
 
 #### OpenStreetMaps
 
@@ -207,7 +207,7 @@ const config = {
   },
   mediaWiki: {
     enabled: true,
-    baseUrl: 'https://wiki.mozilla.org/api.php?action=feedcontributions',
+    baseUrl: 'https://wiki.mozilla.org/api.php',
     username: 'michaelkohler',
     editType: 'Wiki Edit',
     stopDate: '2012-05-01',
