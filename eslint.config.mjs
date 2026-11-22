@@ -9,7 +9,7 @@ export default defineConfig([
   prettierRecommended,
   {
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 2025,
       sourceType: 'module',
       globals: globals.node,
     },
