@@ -114,6 +114,7 @@ The fields marked as required below are only required if the source is enabled. 
 | `types`               | Object    | No       | -                         | Object containing the different labels below                                                                        |
 | `types.createdType`   | string    | No       | Created a Bug Report      | Label for entries related to having report a bug/enhancement.                                                       |
 | `types.commentedType` | string    | No       | Commented on a Bug Report | Label for entries related to having commented on a bug/enhancement.                                                 |
+| `delayMsPerRequest`   | number    | No       | 500                       | Delay between each request to Bugzilla. You might hit rate limiting if you set this lower than default.             |
 
 #### Community Portal
 
@@ -127,14 +128,15 @@ The fields marked as required below are only required if the source is enabled. 
 
 #### Discourse
 
-| Field             | Data Type | Required | Default                   | Description                                                                                                                     |
-| ----------------- | --------- | -------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`         | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely.            |
-| `baseUrl`         | string    | Yes      | -                         | API base url without trailing slash                                                                                             |
-| `username`        | string    | Yes      | -                         | Username on Discourse                                                                                                           |
-| `topicType`       | string    | No       | Created Discourse Topic   | Label for entries related to having created a new topic.                                                                        |
-| `postType`        | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                                |
-| `keepDeletedPost` | boolean   | No       | false                     | If a post gets deleted and can't be queried anymore, setting this to `true` will not delete it from the previous contributions. |
+| Field               | Data Type | Required | Default                   | Description                                                                                                                     |
+| ------------------- | --------- | -------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`           | boolean   | Yes      | -                         | Indicates whether this data source is enabled. Alternatively you can also leave off the `discourse` object entirely.            |
+| `baseUrl`           | string    | Yes      | -                         | API base url without trailing slash                                                                                             |
+| `username`          | string    | Yes      | -                         | Username on Discourse                                                                                                           |
+| `topicType`         | string    | No       | Created Discourse Topic   | Label for entries related to having created a new topic.                                                                        |
+| `postType`          | string    | No       | Posted on Discourse Topic | Label for entries related to having posted on an existing topic.                                                                |
+| `keepDeletedPost`   | boolean   | No       | false                     | If a post gets deleted and can't be queried anymore, setting this to `true` will not delete it from the previous contributions. |
+| `delayMsPerRequest` | number    | No       | 500                       | Delay between each request to Discourse. You might hit rate limiting if you set this lower than default.                        |
 
 #### GitHub
 
@@ -164,13 +166,14 @@ The fields marked as required below are only required if the source is enabled. 
 
 #### MediaWiki
 
-| Field      | Data Type | Required | Default   | Description                                                                                                                                                       |
-| ---------- | --------- | -------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`  | boolean   | Yes      | -         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.                                              |
-| `baseUrl`  | string    | Yes      | -         | URL of the wiki's `api.php`, e.g. `https://wiki.mozilla.org/api.php`. Any query string is ignored, so the previous `?action=feedcontributions` URLs keep working. |
-| `username` | string    | Yes      | -         | Username on MediaWiki                                                                                                                                             |
-| `editType` | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                                                                            |
-| `stopDate` | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                                                        |
+| Field               | Data Type | Required | Default   | Description                                                                                                                                                       |
+| ------------------- | --------- | -------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`           | boolean   | Yes      | -         | Indicates whether this data source is enabled. Alternatively you can also leave off the `mediaWiki` object entirely.                                              |
+| `baseUrl`           | string    | Yes      | -         | URL of the wiki's `api.php`, e.g. `https://wiki.mozilla.org/api.php`. Any query string is ignored, so the previous `?action=feedcontributions` URLs keep working. |
+| `username`          | string    | Yes      | -         | Username on MediaWiki                                                                                                                                             |
+| `editType`          | string    | No       | Wiki Edit | Label for entries related to having edited an article.                                                                                                            |
+| `stopDate`          | string    | Yes      | -         | `new Date()` parseable string containing a date of possibly earliest contribution to track                                                                        |
+| `delayMsPerRequest` | number    | No       | 2000      | Delay between each request to MediaWiki. You might hit rate limiting if you set this lower than default.                                                          |
 
 #### OpenStreetMaps
 
