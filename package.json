@@ -19,6 +19,8 @@
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
   },
   "dependencies": {
+    "@octokit/plugin-retry": "^8.1.1",
+    "@octokit/plugin-throttling": "^11.0.5",
     "@octokit/rest": "^22.0.0",
     "debug": "^4.4.3",
     "jsdom": "^30.0.1",
