@@ -177,11 +177,12 @@ The fields marked as required below are only required if the source is enabled. 
 
 #### OpenStreetMaps
 
-| Field         | Data Type | Required | Default | Description                                                                                                    |
-| ------------- | --------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------- |
-| `enabled`     | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `osm` object entirely. |
-| `displayName` | string    | Yes      | -       | Username on OpenStreetMaps                                                                                     |
-| `stopDate`    | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                     |
+| Field               | Data Type | Required | Default | Description                                                                                                    |
+| ------------------- | --------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `enabled`           | boolean   | Yes      | -       | Indicates whether this data source is enabled. Alternatively you can also leave off the `osm` object entirely. |
+| `displayName`       | string    | Yes      | -       | Username on OpenStreetMaps                                                                                     |
+| `stopDate`          | string    | Yes      | -       | `new Date()` parseable string containing a date of possibly earliest contribution to track                     |
+| `delayMsPerRequest` | number    | No       | 1000    | Delay between each request to OpenStreetMap. You might hit rate limiting if you set this lower than default.   |
 
 ### Sample configuration
 
