@@ -1,1 +1,1 @@
-export { fetchAll } from './lib/fetch.js';
+export { backfillGitHub, fetchAll } from './lib/fetch.js';

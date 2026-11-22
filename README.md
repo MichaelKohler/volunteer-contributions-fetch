@@ -75,6 +75,33 @@ const results = await fetchAll(config, existingContributions);
 
 Note that passing existing contributions this way will be ignored if a `outputFile` is used. Instead the existing contributions will be read from the `outputFile` if it already exists.
 
+### Backfilling GitHub
+
+Regular runs only fetch GitHub contributions newer than the ones already saved. If you add a new pattern to the GitHub `filter` (or move the `stopDate` further back), older matching contributions are therefore not fetched. To get them, run a one-off backfill with `backfillGitHub` after updating your config:
+
+```js
+import { backfillGitHub } from 'volunteer-contributions-fetch';
+
+const config = {}; // Same config as for fetchAll, including the new filter pattern
+
+await backfillGitHub(config, {
+  orgs: ['common-voice'],
+  startDate: '2016-01-01',
+});
+```
+
+The search is limited to the given organizations, users or repositories, so only the contributions needed are fetched instead of your full history. Only the GitHub source is fetched, the result is merged into the saved contributions the same way `fetchAll` does (including the `outputFile` and the optional existing contributions parameter). Contributions found by the backfill still need to match `filter`, and contributions that are already saved are skipped. Contributions newer than the newest saved contribution of the same type (or the `stopDate` if there is none) are skipped as well, as regular runs continue after that one and would otherwise miss contributions outside of the backfilled organizations, users or repositories. The next regular run fetches them instead. Remove the call again once it has run, regular runs keep the backfilled contributions.
+
+| Option      | Data Type | Required | Default           | Description                                                         |
+| ----------- | --------- | -------- | ----------------- | ------------------------------------------------------------------- |
+| `orgs`      | string[]  | No\*     | -                 | Organizations to search in, e.g. `['common-voice']`.                |
+| `users`     | string[]  | No\*     | -                 | Users whose repositories to search in.                              |
+| `repos`     | string[]  | No\*     | -                 | Repositories to search in, in the form `owner/repo`.                |
+| `startDate` | string    | No       | GitHub `stopDate` | `new Date()` parseable string, earliest date to backfill.           |
+| `endDate`   | string    | No       | today             | `new Date()` parseable string, latest date to backfill (inclusive). |
+
+\* At least one of `orgs`, `users` or `repos` is required. Each of them is searched separately.
+
 ## Configuration
 
 You can configure the different providers with a config you pass into the `fetchAll` function call. These config parameters are outlined below. The config gets validated and you might get an error if you haven't specified all necessary properties or if the config contains unknown top-level keys (for example a misspelled source name).
