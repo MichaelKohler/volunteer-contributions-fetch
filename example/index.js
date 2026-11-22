@@ -2,7 +2,6 @@ import { fetchAll } from '../lib/fetch.js';
 
 const config = {
   github: {
-    allowPrivate: true,
     enabled: true,
     username: 'MichaelKohler',
     stopDate: '2025-01-01',
