@@ -225,6 +225,12 @@ export const escapedTitleData = profilePage({
   campaigns: [campaign({ ...campaignA, title: 'Fix &lt;bugs&gt;' })],
 });
 
+// Titles indented with spaces and wrapped across lines.
+export const whitespaceTitleData = profilePage({
+  events: [event({ ...eventA, title: '\n    Firefox\n    Meetup  ' })],
+  campaigns: [campaign({ ...campaignA, title: '  Fix\n  bugs\t' })],
+});
+
 export const unparseableDateData = profilePage({
   events: [event({ ...eventA, time: 'not a date' })],
 });
