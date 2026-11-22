@@ -409,3 +409,25 @@ export const unparseableDateData = {
     },
   },
 };
+
+export const missingChildData = {
+  window: {
+    document: {
+      querySelectorAll: (query) => {
+        if (query === '.profile__event') {
+          return [
+            {
+              querySelector: (singleQuery) =>
+                singleQuery === '.profile__event-title'
+                  ? { textContent: 'EventWithoutTime' }
+                  : null,
+              getAttribute: () => 'LinkA',
+            },
+          ];
+        }
+
+        return [];
+      },
+    },
+  },
+};
