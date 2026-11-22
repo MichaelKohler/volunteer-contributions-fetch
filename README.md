@@ -224,6 +224,7 @@ const config = {
       privateContribution: 'Contribution in private repository',
       createdPR: 'Created PR',
       createdIssue: 'Created Issue Report',
+      commented: 'Commented on an Issue',
       commentedPR: 'Commented on a Pull Request',
       approvedPR: 'Approved a Pull Request',
       changesRequestedPR: 'Requested changes on a Pull Request',
