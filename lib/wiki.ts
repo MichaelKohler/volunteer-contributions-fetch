@@ -3,6 +3,7 @@ import { setTimeout as sleep } from 'timers/promises';
 import { z } from 'zod';
 
 import { requestOk } from './http.js';
+import type { FetchedContribution } from './types.js';
 import { tagRuleSchema } from './tags.js';
 import { baseUrlSchema, sourceSchema, stopDateSchema } from './utils.js';
 
@@ -28,7 +29,32 @@ export const mediaWikiSchema = sourceSchema(
   })
 );
 
-export async function gather({ mediaWiki }) {
+export type MediaWikiConfig = z.output<typeof mediaWikiSchema>;
+export type EnabledMediaWikiConfig = Extract<
+  MediaWikiConfig,
+  { enabled: true }
+>;
+
+interface UserContrib {
+  revid: number;
+  title: string;
+  timestamp: string;
+}
+
+interface QueryResponse {
+  error?: { code: string; info: string };
+  continue?: Record<string, string>;
+  query: {
+    general?: { server: string; script: string };
+    usercontribs?: UserContrib[];
+  };
+}
+
+export async function gather({
+  mediaWiki,
+}: {
+  mediaWiki?: MediaWikiConfig;
+}): Promise<FetchedContribution[]> {
   if (!mediaWiki?.enabled) {
     debug('MediaWiki source not enabled, skipping');
     return [];
@@ -49,14 +75,14 @@ async function processEdits({
   stopDate,
   editType,
   delayMsPerRequest,
-}) {
+}: EnabledMediaWikiConfig) {
   debug('Getting edits from Wiki');
   const apiUrl = getApiUrl(baseUrl);
   const stopTimestamp = new Date(stopDate).toISOString();
 
-  let allEdits = [];
-  let indexUrl;
-  let continueParams = {};
+  let allEdits: FetchedContribution[] = [];
+  let indexUrl: string | undefined;
+  let continueParams: Record<string, string> = {};
 
   while (true) {
     const data = await getPage(apiUrl, {
@@ -68,6 +94,10 @@ async function processEdits({
     });
 
     if (!indexUrl) {
+      if (!data.query.general) {
+        throw new Error('MediaWiki response did not contain the site info');
+      }
+
       const { server, script } = data.query.general;
       // `server` can be protocol-relative, so resolve it against the API URL.
       indexUrl = new URL(`${server}${script}`, apiUrl).toString();
@@ -75,8 +105,9 @@ async function processEdits({
 
     const contribs = data.query.usercontribs || [];
     debug(`Got ${contribs.length} results`);
+    const pageIndexUrl = indexUrl;
     allEdits = allEdits.concat(
-      contribs.map((contrib) => format(editType, indexUrl, contrib))
+      contribs.map((contrib) => format(editType, pageIndexUrl, contrib))
     );
 
     if (!data.continue) {
@@ -90,14 +121,17 @@ async function processEdits({
   }
 }
 
-function getApiUrl(baseUrl) {
+function getApiUrl(baseUrl: string): URL {
   const url = new URL(baseUrl);
   url.search = '';
   url.hash = '';
   return url;
 }
 
-async function getPage(apiUrl, params) {
+async function getPage(
+  apiUrl: URL,
+  params: Record<string, string>
+): Promise<QueryResponse> {
   const url = new URL(apiUrl);
   const allParams = {
     action: 'query',
@@ -114,7 +148,7 @@ async function getPage(apiUrl, params) {
   debug(`Getting ${url}`);
   const response = await requestOk(url, 'MediaWiki');
 
-  const data = await response.json();
+  const data = (await response.json()) as QueryResponse;
   if (data.error) {
     throw new Error(
       `MediaWiki request to ${url} failed: ${data.error.code} - ${data.error.info}`
@@ -126,14 +160,18 @@ async function getPage(apiUrl, params) {
 
 // Mirrors MediaWiki's wfUrlencode() so links are identical to the ones the
 // feedcontributions API used to return and existing entries still match.
-function encodeTitle(title) {
+function encodeTitle(title: string): string {
   return encodeURIComponent(title.replaceAll(' ', '_')).replace(
     /%(2F|3A|40|24|2C|3B)/gi,
     (match) => decodeURIComponent(match)
   );
 }
 
-function format(type, indexUrl, contrib) {
+function format(
+  type: string | undefined,
+  indexUrl: string,
+  contrib: UserContrib
+): FetchedContribution {
   return {
     createdAt: new Date(contrib.timestamp),
     description: `Edited ${contrib.title}`,

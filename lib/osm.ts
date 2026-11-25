@@ -1,15 +1,23 @@
 import Debug from 'debug';
-import { parseString } from 'xml2js';
+import { parseStringPromise } from 'xml2js';
 import { setTimeout as sleep } from 'timers/promises';
-import { promisify } from 'util';
 import { z } from 'zod';
 
 import { requestOk } from './http.js';
+import type { FetchedContribution } from './types.js';
 import { tagRuleSchema } from './tags.js';
 import { sourceSchema, stopDateSchema } from './utils.js';
 
 const debug = Debug('contributions:openstreetmaps');
-const parseStringAsync = promisify(parseString);
+
+interface OsmChangeset {
+  $: { id: string; created_at: string };
+  tag?: { $: { k: string; v: string } }[];
+}
+
+interface OsmResponse {
+  osm?: { changeset?: OsmChangeset[] };
+}
 
 export const OSM_CATEGORY = 'osm';
 export const CATEGORIES = [OSM_CATEGORY];
@@ -28,7 +36,14 @@ export const osmSchema = sourceSchema(
   })
 );
 
-export async function gather({ osm }) {
+export type OsmConfig = z.output<typeof osmSchema>;
+export type EnabledOsmConfig = Extract<OsmConfig, { enabled: true }>;
+
+export async function gather({
+  osm,
+}: {
+  osm?: OsmConfig;
+}): Promise<FetchedContribution[]> {
   if (!osm?.enabled) {
     debug('OSM source not enabled, skipping');
     return [];
@@ -40,10 +55,14 @@ export async function gather({ osm }) {
   return edits;
 }
 
-async function processEdits({ displayName, stopDate, delayMsPerRequest }) {
+async function processEdits({
+  displayName,
+  stopDate,
+  delayMsPerRequest,
+}: EnabledOsmConfig) {
   debug('Getting edits from OSM');
-  const allEdits = [];
-  const seenLinks = new Set();
+  const allEdits: FetchedContribution[] = [];
+  const seenLinks = new Set<string>();
   const stopTime = new Date(stopDate).getTime();
   const stopDateIso = new Date(stopTime).toISOString();
   let hasMoreData = true;
@@ -74,7 +93,7 @@ async function processEdits({ displayName, stopDate, delayMsPerRequest }) {
     });
     hasMoreData = edits.length === MAX_EDITS_PER_PAGE;
 
-    const oldest = processed[processed.length - 1].createdAt.getTime();
+    const oldest = processed[processed.length - 1]!.createdAt.getTime();
     if (oldest < stopTime) {
       break;
     }
@@ -97,11 +116,23 @@ async function processEdits({ displayName, stopDate, delayMsPerRequest }) {
   return allEdits;
 }
 
-function getUrl({ displayName, createdBefore, stopDate }) {
+function getUrl({
+  displayName,
+  createdBefore,
+  stopDate,
+}: {
+  displayName: string;
+  createdBefore: string;
+  stopDate: string;
+}) {
   return `https://api.openstreetmap.org/api/0.6/changesets?display_name=${encodeURIComponent(displayName)}&time=${stopDate},${createdBefore}`;
 }
 
-async function getPage(displayName, stopDate, createdBefore) {
+async function getPage(
+  displayName: string,
+  stopDate: string,
+  createdBefore: string
+): Promise<OsmChangeset[]> {
   const url = getUrl({
     displayName,
     stopDate,
@@ -110,7 +141,7 @@ async function getPage(displayName, stopDate, createdBefore) {
   debug(`Getting ${url}`);
   const response = await requestOk(url, 'OSM');
   const data = await response.text();
-  const parsed = await parseStringAsync(data);
+  const parsed: OsmResponse = await parseStringPromise(data);
   const items =
     parsed.osm && Array.isArray(parsed.osm.changeset)
       ? parsed.osm.changeset
@@ -118,11 +149,11 @@ async function getPage(displayName, stopDate, createdBefore) {
   return items;
 }
 
-function processEntities(entities) {
+function processEntities(entities: OsmChangeset[]) {
   return entities.map((entity) => format(entity));
 }
 
-function format(entity) {
+function format(entity: OsmChangeset): FetchedContribution {
   const comment = (entity.tag || []).find((tag) => tag.$.k === 'comment');
 
   return {

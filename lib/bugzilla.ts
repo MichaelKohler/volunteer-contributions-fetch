@@ -11,6 +11,7 @@ import {
   stopDateSchema,
 } from './utils.js';
 import { tagRuleSchema } from './tags.js';
+import type { Contribution, FetchedContribution } from './types.js';
 
 const debug = Debug('contributions:bugzilla');
 
@@ -47,7 +48,34 @@ export const bugzillaSchema = sourceSchema(
   })
 );
 
-export async function gather({ bugzilla }, existingContributions = []) {
+export type BugzillaConfig = z.output<typeof bugzillaSchema>;
+export type EnabledBugzillaConfig = Extract<BugzillaConfig, { enabled: true }>;
+type BugzillaTypes = NonNullable<EnabledBugzillaConfig['types']>;
+
+interface Bug {
+  id: number;
+  summary: string;
+}
+
+interface BugComment {
+  bug_id: number;
+  count: number;
+  creator?: string;
+  creation_time: string;
+}
+
+interface BugsResponse {
+  bugs: Bug[];
+}
+
+interface CommentsResponse {
+  bugs: Record<string, { comments: BugComment[] }>;
+}
+
+export async function gather(
+  { bugzilla }: { bugzilla?: BugzillaConfig },
+  existingContributions: Contribution[] = []
+): Promise<FetchedContribution[]> {
   if (!bugzilla?.enabled) {
     debug('Bugzilla source not enabled, skipping');
     return [];
@@ -60,7 +88,7 @@ export async function gather({ bugzilla }, existingContributions = []) {
     );
   }) || { createdAt: bugzilla.stopDate };
 
-  const commentedBugs = [];
+  const commentedBugs: Bug[][] = [];
   const bugsList = bugPageGenerator(bugzilla, latest.createdAt);
   for await (const bugList of bugsList) {
     commentedBugs.push(
@@ -74,12 +102,12 @@ export async function gather({ bugzilla }, existingContributions = []) {
 
   debug(`Got ${flatCommentedBugs.length} bugs this user has commented on.`);
 
-  const titleMap = new Map();
+  const titleMap = new Map<number, string>();
   flatCommentedBugs.forEach((bug) => titleMap.set(bug.id, bug.summary));
 
   // Now that we have all bugs we commented on, we can fetch the comments
   // for each bug..
-  let contributions = [];
+  let contributions: FetchedContribution[] = [];
   const commentsList = getComments(bugzilla, flatCommentedBugs, titleMap);
   for await (const comments of commentsList) {
     contributions = contributions.concat(comments);
@@ -90,7 +118,10 @@ export async function gather({ bugzilla }, existingContributions = []) {
   });
 }
 
-async function* bugPageGenerator(bugzilla, stopDate) {
+async function* bugPageGenerator(
+  bugzilla: EnabledBugzillaConfig,
+  stopDate: Date | string
+): AsyncGenerator<Bug[]> {
   let offset = 0;
   const date = new Date(stopDate);
   // Dates are parsed as UTC midnight, so we need to use the UTC methods,
@@ -106,7 +137,7 @@ async function* bugPageGenerator(bugzilla, stopDate) {
     const bugsUrl = `${bugzilla.baseUrl}/rest/bug?${query}`;
     debug(`Fetching from ${bugsUrl}`);
     const response = await requestOk(bugsUrl, 'Bugzilla');
-    const data = await response.json();
+    const data = (await response.json()) as BugsResponse;
     debug(`Got ${data.bugs.length} bugs results`);
     // If we have less results than the max result, we're at the end
     if (data.bugs.length < RESULTS_PER_PAGE) {
@@ -119,7 +150,11 @@ async function* bugPageGenerator(bugzilla, stopDate) {
   }
 }
 
-async function* getComments(bugzilla, bugs, titleMap) {
+async function* getComments(
+  bugzilla: EnabledBugzillaConfig,
+  bugs: Bug[],
+  titleMap: Map<number, string>
+): AsyncGenerator<FetchedContribution[]> {
   const username = bugzilla.username.toLowerCase();
   for await (const bug of bugs) {
     if (bugzilla.delayMsPerRequest !== 0) {
@@ -136,44 +171,58 @@ async function* getComments(bugzilla, bugs, titleMap) {
       continue;
     }
     assertOk(response, 'Bugzilla', commentsUrl);
-    const data = await response.json();
+    const data = (await response.json()) as CommentsResponse;
 
-    const ownComments = data.bugs[bug.id].comments.filter(
+    const bugComments = data.bugs[bug.id];
+    if (!bugComments) {
+      throw new Error(
+        `Bugzilla response from ${commentsUrl} did not contain bug ${bug.id}`
+      );
+    }
+
+    const ownComments = bugComments.comments.filter(
       (comment) => comment.creator?.toLowerCase() === username
     );
 
     yield processEntities(bugzilla, ownComments, titleMap);
   }
-
-  return [];
 }
 
-async function isGoneResponse(response) {
+async function isGoneResponse(response: Response): Promise<boolean> {
   if (![401, 403, 404].includes(response.status)) {
     return false;
   }
 
   try {
-    const data = await response.json();
-    return [BUG_DOES_NOT_EXIST, BUG_ACCESS_DENIED].includes(data?.code);
+    const data = (await response.json()) as { code?: number } | null;
+    return [BUG_DOES_NOT_EXIST, BUG_ACCESS_DENIED].includes(data?.code ?? -1);
   } catch {
     return false;
   }
 }
 
-function processEntities({ baseUrl, types }, entities, titleMap) {
+function processEntities(
+  { baseUrl, types }: EnabledBugzillaConfig,
+  entities: BugComment[],
+  titleMap: Map<number, string>
+): FetchedContribution[] {
   return entities.map((entity) =>
     format(baseUrl, types || {}, entity, titleMap)
   );
 }
 
-function format(baseUrl, types, entity, titleMap) {
+function format(
+  baseUrl: string,
+  types: BugzillaTypes,
+  entity: BugComment,
+  titleMap: Map<number, string>
+): FetchedContribution {
   const created = types.createdType || TYPE_CREATED;
   const commented = types.commentedType || TYPE_COMMENTED;
 
   return {
     createdAt: new Date(entity.creation_time),
-    description: titleMap.get(entity.bug_id),
+    description: titleMap.get(entity.bug_id) ?? '',
     link: `${baseUrl}/show_bug.cgi?id=${entity.bug_id}#c${entity.count}`,
     type: entity.count === 0 ? created : commented,
     source:

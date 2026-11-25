@@ -1,3 +1,5 @@
+import type { Contribution } from './types.js';
+
 // Existing contributions are read from JSON and therefore have a string as
 // createdAt, while freshly fetched ones have a Date. Normalize before comparing.
 // All fields a contribution carries are part of the key: some sources only
@@ -5,7 +7,7 @@
 // distinct entries can share source, type, link and createdAt and only differ
 // by description. JSON.stringify avoids ambiguity when a field contains the
 // separator.
-function getContributionKey(contribution) {
+function getContributionKey(contribution: Contribution): string {
   return JSON.stringify([
     contribution.source,
     contribution.type,
@@ -17,14 +19,17 @@ function getContributionKey(contribution) {
 
 // Invalid dates would make the comparator return NaN, which leaves the sort
 // order undefined. Treat them as the oldest possible date instead.
-function getSortTime(contribution) {
+function getSortTime(contribution: Pick<Contribution, 'createdAt'>): number {
   const time = new Date(contribution.createdAt).getTime();
   return Number.isNaN(time) ? -Infinity : time;
 }
 
 // Sorts newest first, with contributions without a valid date at the end.
 // Ties keep their original order, as Array.prototype.sort is stable.
-export const compareContributions = (a, b) => {
+export const compareContributions = (
+  a: Pick<Contribution, 'createdAt'>,
+  b: Pick<Contribution, 'createdAt'>
+): number => {
   const timeA = getSortTime(a);
   const timeB = getSortTime(b);
   if (timeA === timeB) {
@@ -35,8 +40,10 @@ export const compareContributions = (a, b) => {
 };
 
 // Keeps the first occurrence of each contribution.
-export const ensureUniqueContributions = (allContributions) => {
-  const seen = new Set();
+export const ensureUniqueContributions = <C extends Contribution>(
+  allContributions: C[]
+): C[] => {
+  const seen = new Set<string>();
   return allContributions.filter((contribution) => {
     const key = getContributionKey(contribution);
     if (seen.has(key)) {
@@ -50,7 +57,7 @@ export const ensureUniqueContributions = (allContributions) => {
 
 // Sort object keys so that the serialization does not depend on key order.
 // Dates are already converted to ISO strings by their toJSON at this point.
-function sortKeys(key, value) {
+function sortKeys(_key: string, value: unknown): unknown {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return Object.fromEntries(
       Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
@@ -62,12 +69,15 @@ function sortKeys(key, value) {
 
 // Compares the stored content of two contribution lists, ignoring the order
 // of the entries as well as the key order within each entry.
-export const haveSameContributions = (contributionsA, contributionsB) => {
+export const haveSameContributions = (
+  contributionsA: Contribution[],
+  contributionsB: Contribution[]
+): boolean => {
   if (contributionsA.length !== contributionsB.length) {
     return false;
   }
 
-  const counts = new Map();
+  const counts = new Map<string, number>();
   for (const contribution of contributionsA) {
     const serialized = JSON.stringify(contribution, sortKeys);
     counts.set(serialized, (counts.get(serialized) || 0) + 1);

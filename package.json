@@ -8,12 +8,17 @@
     "type": "git",
     "url": "https://github.com/MichaelKohler/volunteer-contributions-fetch.git"
   },
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "type": "module",
   "files": [
-    "index.js",
-    "lib/",
-    "!lib/**/*.test.js"
+    "dist/"
   ],
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
@@ -31,6 +36,10 @@
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-angular": "^21.0.1",
     "@eslint/js": "^10.0.1",
+    "@types/debug": "^4.1.13",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^22.20.7",
+    "@types/xml2js": "^0.4.14",
     "@vitest/coverage-v8": "^5.0.0",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
@@ -39,12 +48,17 @@
     "husky": "^9.1.7",
     "prettier": "^3.7.4",
     "semantic-release": "^26.0.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.74.0",
     "vitest": "^5.0.0"
   },
   "scripts": {
     "prepare": "husky",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "typecheck": "tsc -p tsconfig.json",
     "eslint": "eslint .",
-    "example": "DEBUG=contributions:* node --env-file .env example/index.js",
+    "example": "npm run build && DEBUG=contributions:* node --env-file .env example/index.js",
     "prettier": "prettier --check .",
     "prettier:format": "prettier --write .",
     "semantic-release": "semantic-release",

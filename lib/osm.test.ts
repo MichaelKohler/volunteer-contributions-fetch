@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { firstPage, secondPage } from '../fixtures/osm.js';
 import * as osm from './osm.js';
+import { mockedFetch } from './test-helpers.js';
 
 vi.mock('timers/promises', () => ({ setTimeout: vi.fn() }));
 
@@ -95,8 +96,8 @@ test('should validate config - missing stopDate', () => {
 test('should pass a timeout signal to every request', async () => {
   await osm.gather(config);
   expect(fetch).toHaveBeenCalled();
-  for (const [, options] of fetch.mock.calls) {
-    expect(options.signal).toBeInstanceOf(AbortSignal);
+  for (const [, options] of mockedFetch().mock.calls) {
+    expect(options?.signal).toBeInstanceOf(AbortSignal);
   }
 });
 
@@ -153,7 +154,7 @@ test('should format', async () => {
 test('should request next page with ISO date', async () => {
   await osm.gather(config);
 
-  const secondUrl = fetch.mock.calls[1][0];
+  const secondUrl = mockedFetch().mock.calls[1]?.[0];
   expect(secondUrl).toContain(',2024-12-29T12:53:42.000Z');
 });
 
@@ -165,8 +166,8 @@ test('should not skip changesets created in the same second across pages', async
       <changeset id="102" created_at="2024-12-29T12:53:40Z"></changeset>
     </osm>
   `;
-  fetch.mockReset();
-  fetch
+  mockedFetch().mockReset();
+  mockedFetch()
     .mockResolvedValueOnce({
       ok: true,
       text: vi.fn().mockResolvedValue(firstPage),
@@ -191,8 +192,8 @@ test('should move past a second with more than a full page of changesets', async
       <changeset id="200" created_at="2024-12-29T12:53:40Z"></changeset>
     </osm>
   `;
-  fetch.mockReset();
-  fetch
+  mockedFetch().mockReset();
+  mockedFetch()
     .mockResolvedValueOnce({
       ok: true,
       text: vi.fn().mockResolvedValue(firstPage),
@@ -209,13 +210,15 @@ test('should move past a second with more than a full page of changesets', async
   const contributions = await osm.gather(config);
 
   expect(contributions.length).toBe(101);
-  expect(fetch.mock.calls[2][0]).toContain(',2024-12-29T12:53:40.999Z');
+  expect(mockedFetch().mock.calls[2]?.[0]).toContain(
+    ',2024-12-29T12:53:40.999Z'
+  );
 });
 
 test('should handle user without changesets', async () => {
   const emptyPage = '<osm version="0.6"></osm>';
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({
     ok: true,
     text: vi.fn().mockResolvedValue(emptyPage),
   });
@@ -234,8 +237,8 @@ test('should handle changesets without comment', async () => {
       <changeset id="2" created_at="2024-12-29T12:53:41Z"></changeset>
     </osm>
   `;
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({
     ok: true,
     text: vi.fn().mockResolvedValue(page),
   });
@@ -249,8 +252,8 @@ test('should handle changesets without comment', async () => {
 });
 
 test('should throw if a request fails', async () => {
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({ ok: false, status: 429 });
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({ ok: false, status: 429 });
 
   await expect(osm.gather(config)).rejects.toThrow('failed with status 429');
 });
@@ -265,7 +268,9 @@ test('should encode display name in URL', async () => {
 
   await osm.gather(specialConfig);
 
-  expect(fetch.mock.calls[0][0]).toContain('display_name=Jane%20Doe%26co&');
+  expect(mockedFetch().mock.calls[0]?.[0]).toContain(
+    'display_name=Jane%20Doe%26co&'
+  );
 });
 
 test('should send stopDate to the API as ISO 8601', async () => {
@@ -278,7 +283,9 @@ test('should send stopDate to the API as ISO 8601', async () => {
 
   await osm.gather(specialConfig);
 
-  expect(fetch.mock.calls[0][0]).toContain('&time=2021-11-01T00:00:00.000Z,');
+  expect(mockedFetch().mock.calls[0]?.[0]).toContain(
+    '&time=2021-11-01T00:00:00.000Z,'
+  );
 });
 
 test('should skip changesets created before stopDate', async () => {
@@ -289,8 +296,8 @@ test('should skip changesets created before stopDate', async () => {
       <changeset id="3" created_at="2021-10-31T23:00:00Z" closed_at="2021-11-01T00:30:00Z"></changeset>
     </osm>
   `;
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({
     ok: true,
     text: vi.fn().mockResolvedValue(page),
   });
@@ -313,8 +320,8 @@ test('should stop paging once changesets are older than stopDate', async () => {
       ).join('')}
     </osm>
   `;
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({
     ok: true,
     text: vi.fn().mockResolvedValue(fullPage),
   });

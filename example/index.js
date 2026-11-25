@@ -1,4 +1,4 @@
-import { fetchAll } from '../lib/fetch.js';
+import { fetchAll } from '../dist/index.js';
 
 const config = {
   github: {

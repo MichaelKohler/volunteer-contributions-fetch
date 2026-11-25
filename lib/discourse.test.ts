@@ -2,6 +2,7 @@ import { setTimeout as sleep } from 'timers/promises';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { gather, discourseSchema } from './discourse.js';
+import { mockedFetch } from './test-helpers.js';
 
 vi.mock('timers/promises', () => ({ setTimeout: vi.fn() }));
 
@@ -69,13 +70,14 @@ const config = {
     enabled: true,
     baseUrl: 'https://discourse.mozilla.org',
     username: 'user',
+    keepDeletedPost: false,
     delayMsPerRequest: 1234,
   },
 };
 
 // Each page is returned once, in order. Post paging only ends on an empty
 // page, so add POSTS_EMPTY after the last posts page.
-function mockFetch(...pages) {
+function mockFetch(...pages: unknown[]) {
   const mockedFetch = vi.fn();
   for (const page of pages) {
     mockedFetch.mockResolvedValueOnce({
@@ -126,8 +128,8 @@ test('Discourse schema - invalid config', () => {
 test('should pass a timeout signal to every request', async () => {
   await gather(config);
   expect(fetch).toHaveBeenCalled();
-  for (const [, options] of fetch.mock.calls) {
-    expect(options.signal).toBeInstanceOf(AbortSignal);
+  for (const [, options] of mockedFetch().mock.calls) {
+    expect(options?.signal).toBeInstanceOf(AbortSignal);
   }
 });
 
@@ -324,8 +326,8 @@ test('should not duplicate kept entries when slug or type changed', async () => 
 });
 
 test('should throw if a request fails', async () => {
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({ ok: false, status: 500 });
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({ ok: false, status: 500 });
 
   await expect(gather(config)).rejects.toThrow(
     'Discourse request to https://discourse.mozilla.org/topics/created-by/user.json?page=0 failed with status 500'
@@ -342,14 +344,16 @@ test('should encode username in URLs', async () => {
 
   await gather(specialConfig);
 
-  expect(fetch.mock.calls[0][0]).toBe(
+  expect(mockedFetch().mock.calls[0]?.[0]).toBe(
     'https://discourse.mozilla.org/topics/created-by/a%20b%26c.json?page=0'
   );
-  expect(fetch.mock.calls[2][0]).toContain('username=a%20b%26c&filter=5');
+  expect(mockedFetch().mock.calls[2]?.[0]).toContain(
+    'username=a%20b%26c&filter=5'
+  );
 });
 
 test('should keep paging topics while more_topics_url is set, whatever the page size', async () => {
-  const page = (id, more) => ({
+  const page = (id: number, more: boolean) => ({
     topic_list: {
       topics: [{ created_at: '2020-04-13', title: `T${id}`, slug: 's', id }],
       ...(more
@@ -362,7 +366,7 @@ test('should keep paging topics while more_topics_url is set, whatever the page 
   const contributions = await gather(config);
 
   expect(contributions.map((c) => c.description)).toEqual(['T1', 'T2', 'T3']);
-  expect(fetch.mock.calls[2][0]).toContain('?page=2');
+  expect(mockedFetch().mock.calls[2]?.[0]).toContain('?page=2');
 });
 
 test('should advance the posts offset by the number of posts received', async () => {
@@ -372,7 +376,7 @@ test('should advance the posts offset by the number of posts received', async ()
   const contributions = await gather(config);
 
   expect(contributions.length).toBe(21);
-  expect(fetch.mock.calls[1][0]).toContain('&offset=0');
-  expect(fetch.mock.calls[2][0]).toContain('&offset=20');
-  expect(fetch.mock.calls[3][0]).toContain('&offset=21');
+  expect(mockedFetch().mock.calls[1]?.[0]).toContain('&offset=0');
+  expect(mockedFetch().mock.calls[2]?.[0]).toContain('&offset=20');
+  expect(mockedFetch().mock.calls[3]?.[0]).toContain('&offset=21');
 });

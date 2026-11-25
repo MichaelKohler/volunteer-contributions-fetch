@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { ensureUniqueContributions } from './contributions.js';
 import { requestOk } from './http.js';
+import type { FetchedContribution } from './types.js';
 import { tagRuleSchema } from './tags.js';
 import { baseUrlSchema, sourceSchema } from './utils.js';
 
@@ -42,7 +43,17 @@ export const communityPortalSchema = sourceSchema(
   })
 );
 
-export async function gather({ communityPortal }) {
+export type CommunityPortalConfig = z.output<typeof communityPortalSchema>;
+export type EnabledCommunityPortalConfig = Extract<
+  CommunityPortalConfig,
+  { enabled: true }
+>;
+
+export async function gather({
+  communityPortal,
+}: {
+  communityPortal?: CommunityPortalConfig;
+}): Promise<FetchedContribution[]> {
   if (!communityPortal?.enabled) {
     debug('Community Portal source not enabled, skipping');
     return [];
@@ -58,29 +69,35 @@ export async function gather({ communityPortal }) {
   return contributions;
 }
 
-function processEvents(communityPortal, document) {
+function processEvents(
+  communityPortal: EnabledCommunityPortalConfig,
+  document: Document
+) {
   debug('Getting events from Community Portal');
   const allEventNodes = document.querySelectorAll('.profile__event');
 
   return Array.from(allEventNodes, (entity) =>
     formatEvent(communityPortal.participationType, entity)
   )
-    .sort((a, b) => b.createdAt - a.createdAt)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .filter((event) => event.createdAt < new Date());
 }
 
-function processCampaigns(communityPortal, document) {
+function processCampaigns(
+  communityPortal: EnabledCommunityPortalConfig,
+  document: Document
+) {
   debug('Getting campaigns from Community Portal');
   const allCampaignNodes = document.querySelectorAll('.profile__campaign');
 
   return Array.from(allCampaignNodes, (entity) =>
     formatCampaign(communityPortal.campaignType, entity)
   )
-    .sort((a, b) => b.createdAt - a.createdAt)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .filter((campaign) => campaign.createdAt < new Date());
 }
 
-async function getCommunityPortalDocument(url) {
+async function getCommunityPortalDocument(url: string): Promise<Document> {
   // JSDOM.fromURL has no way to set a timeout, so we fetch the page ourselves.
   const response = await requestOk(url, 'Community Portal');
   const html = await response.text();
@@ -89,19 +106,25 @@ async function getCommunityPortalDocument(url) {
   return document;
 }
 
-function formatEvent(type, entity) {
+function formatEvent(
+  type: string | undefined,
+  entity: Element
+): FetchedContribution {
   return {
     createdAt: parseEventTime(getChildText(entity, '.profile__event-time')),
     description: normalizeWhitespace(
       getChildText(entity, '.profile__event-title')
     ),
-    link: entity.getAttribute('href'),
+    link: entity.getAttribute('href') ?? '',
     type: type || TYPE_PARTICIPATION,
     source: EVENTS_CATEGORY,
   };
 }
 
-function formatCampaign(type, entity) {
+function formatCampaign(
+  type: string | undefined,
+  entity: Element
+): FetchedContribution {
   return {
     createdAt: parseCampaignDates(
       getChildText(entity, '.profile__campaign-dates')
@@ -109,7 +132,7 @@ function formatCampaign(type, entity) {
     description: normalizeWhitespace(
       getChildText(entity, '.profile__campaign-title')
     ),
-    link: entity.getAttribute('href'),
+    link: entity.getAttribute('href') ?? '',
     type: type || TYPE_CAMPAIGN,
     source: CAMPAIGNS_CATEGORY,
   };
@@ -117,51 +140,53 @@ function formatCampaign(type, entity) {
 
 // Throw a descriptive error instead of a generic TypeError when the profile
 // markup changes and an expected child element is missing.
-function getChildText(entity, selector) {
+function getChildText(entity: Element, selector: string): string {
   const element = entity.querySelector(selector);
   if (!element) {
     throw new Error(
       `Could not find "${selector}" in Community Portal entry, the profile markup may have changed`
     );
   }
-  return element.textContent;
+  return element.textContent ?? '';
 }
 
-function normalizeWhitespace(text) {
+function normalizeWhitespace(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-function monthIndex(name) {
+function monthIndex(name: string): number {
   return MONTHS.indexOf(name.toLowerCase());
 }
 
 // The profile renders event times as "August 08, 2022 ∙ 18:00". The page does
 // not state a time zone, so we interpret it as UTC to stay independent of the
 // machine's time zone.
-function parseEventTime(text) {
+function parseEventTime(text: string): Date {
   const value = normalizeWhitespace(text);
   const match = value.match(
     /^([a-zA-Z]+) (\d{1,2}), (\d{4})\s*∙\s*(\d{1,2}):(\d{2})$/
   );
-  const month = match ? monthIndex(match[1]) : -1;
-  if (month === -1) {
+  const month = match?.[1] ? monthIndex(match[1]) : -1;
+  if (!match || month === -1) {
     throw new Error(`Could not parse Community Portal event time "${value}"`);
   }
 
   const [, , day, year, hours, minutes] = match;
-  return new Date(Date.UTC(year, month, day, hours, minutes));
+  return new Date(
+    Date.UTC(Number(year), month, Number(day), Number(hours), Number(minutes))
+  );
 }
 
 // The profile renders campaign dates either as "January 01 2022" or as a range
 // "December 01 - January 15 2022", where only the end date carries the year.
-function parseCampaignDates(text) {
+function parseCampaignDates(text: string): Date {
   const value = normalizeWhitespace(text);
   const match = value.match(
     /^([a-zA-Z]+) (\d{1,2})(?: - ([a-zA-Z]+) \d{1,2})? (\d{4})$/
   );
-  const month = match ? monthIndex(match[1]) : -1;
+  const month = match?.[1] ? monthIndex(match[1]) : -1;
   const endMonth = match && match[3] ? monthIndex(match[3]) : month;
-  if (month === -1 || endMonth === -1) {
+  if (!match || month === -1 || endMonth === -1) {
     throw new Error(
       `Could not parse Community Portal campaign dates "${value}"`
     );
@@ -169,6 +194,6 @@ function parseCampaignDates(text) {
 
   const [, , day, , endYear] = match;
   // A range ending in an earlier month than it started spans a year boundary.
-  const year = endMonth < month ? endYear - 1 : endYear;
-  return new Date(Date.UTC(year, month, day));
+  const year = endMonth < month ? Number(endYear) - 1 : Number(endYear);
+  return new Date(Date.UTC(year, month, Number(day)));
 }

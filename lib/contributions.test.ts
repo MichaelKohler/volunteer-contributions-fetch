@@ -5,8 +5,13 @@ import {
   ensureUniqueContributions,
   haveSameContributions,
 } from './contributions.js';
+import type { Contribution, FetchedContribution } from './types.js';
 
-const contributions = [
+const contributions: [
+  FetchedContribution,
+  FetchedContribution,
+  FetchedContribution,
+] = [
   {
     createdAt: new Date('2022-12-08T22:43:17.000Z'),
     description: 'fix: remove unapproved sv-SE Gutenberg sentences',
@@ -32,7 +37,10 @@ const contributions = [
   },
 ];
 
-const alreadyUniqueContributions = [contributions[0], contributions[1]];
+const alreadyUniqueContributions: FetchedContribution[] = [
+  contributions[0],
+  contributions[1],
+];
 
 test('should not remove anything if there was nothing to do', async () => {
   const result = ensureUniqueContributions(alreadyUniqueContributions);
@@ -94,8 +102,10 @@ test('should consider identical contributions the same', async () => {
 
 test('should ignore entry order and key order when comparing', async () => {
   const reordered = [
-    { ...alreadyUniqueContributions[1] },
-    Object.fromEntries(Object.entries(alreadyUniqueContributions[0]).reverse()),
+    { ...contributions[1] },
+    Object.fromEntries(
+      Object.entries(contributions[0]).reverse()
+    ) as Contribution,
   ];
   expect(haveSameContributions(alreadyUniqueContributions, reordered)).toBe(
     true
@@ -108,9 +118,9 @@ test('should treat a Date and its ISO string as the same', async () => {
 });
 
 test('should detect changed contributions', async () => {
-  const changed = [
-    alreadyUniqueContributions[0],
-    { ...alreadyUniqueContributions[1], description: 'changed' },
+  const changed: Contribution[] = [
+    contributions[0],
+    { ...contributions[1], description: 'changed' },
   ];
   expect(haveSameContributions(alreadyUniqueContributions, changed)).toBe(
     false
@@ -119,14 +129,12 @@ test('should detect changed contributions', async () => {
 
 test('should detect different lengths', async () => {
   expect(
-    haveSameContributions(alreadyUniqueContributions, [
-      alreadyUniqueContributions[0],
-    ])
+    haveSameContributions(alreadyUniqueContributions, [contributions[0]])
   ).toBe(false);
 });
 
 test('should respect duplicate counts', async () => {
-  const [a, b] = alreadyUniqueContributions;
+  const [a, b] = contributions;
   expect(haveSameContributions([a, a, b], [a, b, b])).toBe(false);
 });
 
@@ -147,7 +155,7 @@ test('should sort invalid dates last and consistently', async () => {
     { link: 'old', createdAt: '2024-01-01T00:00:00.000Z' },
     { link: 'invalid-2', createdAt: 'also not a date' },
     { link: 'middle', createdAt: '2024-01-02T00:00:00.000Z' },
-  ];
+  ] as Pick<Contribution, 'link' | 'createdAt'>[];
   const expected = [
     'new',
     'middle',

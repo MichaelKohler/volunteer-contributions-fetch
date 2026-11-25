@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, assert, beforeEach, expect, test, vi } from 'vitest';
 
 import { setTimeout as sleep } from 'timers/promises';
 
 import { firstPage, secondPage } from '../fixtures/wiki.js';
 import * as wiki from './wiki.js';
+import { mockedFetch } from './test-helpers.js';
 
 vi.mock('timers/promises', () => ({ setTimeout: vi.fn() }));
 
@@ -17,12 +18,18 @@ const config = {
   },
 };
 
-function mockResponse(data) {
+function mockResponse(data: unknown) {
   return { ok: true, json: vi.fn().mockResolvedValue(data) };
 }
 
-function requestedParams(callIndex) {
-  return new URL(fetch.mock.calls[callIndex][0]).searchParams;
+function requestedUrl(callIndex: number) {
+  const url = mockedFetch().mock.calls[callIndex]?.[0];
+  assert(url, `Expected fetch to have been called ${callIndex + 1} times`);
+  return new URL(url);
+}
+
+function requestedParams(callIndex: number) {
+  return requestedUrl(callIndex).searchParams;
 }
 
 beforeEach(() => {
@@ -115,8 +122,8 @@ test('should validate config - missing stopDate', () => {
 test('should pass a timeout signal to every request', async () => {
   await wiki.gather(config);
   expect(fetch).toHaveBeenCalled();
-  for (const [, options] of fetch.mock.calls) {
-    expect(options.signal).toBeInstanceOf(AbortSignal);
+  for (const [, options] of mockedFetch().mock.calls) {
+    expect(options?.signal).toBeInstanceOf(AbortSignal);
   }
 });
 
@@ -156,14 +163,14 @@ test('should ignore the query string of a legacy baseUrl', async () => {
     },
   });
 
-  const url = new URL(fetch.mock.calls[0][0]);
+  const url = requestedUrl(0);
   expect(url.pathname).toBe('/api.php');
   expect(url.searchParams.get('action')).toBe('query');
 });
 
 test('should keep fetching until there is no continuation', async () => {
   // More edits than fit in one page, all within the same month.
-  const page = (revid, more) => ({
+  const page = (revid: number, more: boolean) => ({
     ...(more
       ? { continue: { uccontinue: `x|${revid}`, continue: '-||' } }
       : {}),
@@ -175,8 +182,8 @@ test('should keep fetching until there is no continuation', async () => {
     },
   });
 
-  fetch.mockReset();
-  fetch
+  mockedFetch().mockReset();
+  mockedFetch()
     .mockResolvedValueOnce(mockResponse(page(3, true)))
     .mockResolvedValueOnce(mockResponse(page(2, true)))
     .mockResolvedValueOnce(mockResponse(page(1, false)));
@@ -266,19 +273,19 @@ test('should format with custom types', async () => {
 
   const contributions = await wiki.gather(specificTypeConfig);
 
-  expect(contributions[0].type).toBe(specificTypeConfig.mediaWiki.editType);
+  expect(contributions[0]?.type).toBe(specificTypeConfig.mediaWiki.editType);
 });
 
 test('should throw if a request fails', async () => {
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({ ok: false, status: 503 });
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({ ok: false, status: 503 });
 
   await expect(wiki.gather(config)).rejects.toThrow('failed with status 503');
 });
 
 test('should throw if the API returns an error', async () => {
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce(
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce(
     mockResponse({
       error: { code: 'baduser_ucuser', info: 'Invalid value for ucuser.' },
     })
@@ -300,5 +307,7 @@ test('should encode username in URL', async () => {
   await wiki.gather(specialConfig);
 
   expect(requestedParams(0).get('ucuser')).toBe('Jane Doe&co');
-  expect(fetch.mock.calls[0][0].toString()).toContain('ucuser=Jane+Doe%26co');
+  expect(mockedFetch().mock.calls[0]?.[0].toString()).toContain(
+    'ucuser=Jane+Doe%26co'
+  );
 });

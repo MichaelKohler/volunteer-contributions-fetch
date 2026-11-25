@@ -38,12 +38,13 @@ test('should find latest matching contribution regardless of order', () => {
 });
 
 test('should skip contributions with an invalid date', () => {
+  // Saved contributions are not validated, so createdAt might be missing.
   const contributions = [
     { source: 'a', createdAt: 'not a date' },
     { source: 'a' },
     { source: 'a', createdAt: '2023-01-01T00:00:00Z' },
     { source: 'a', createdAt: new Date(NaN) },
-  ];
+  ] as { source: string; createdAt: Date | string }[];
   const latest = findLatest(contributions, (c) => c.source === 'a');
   expect(latest).toBe(contributions[2]);
 });
@@ -57,7 +58,10 @@ test('should return undefined if only invalid dates match', () => {
 });
 
 test('should return undefined if no contribution matches', () => {
-  const latest = findLatest([{ source: 'a' }], (c) => c.source === 'b');
+  const latest = findLatest(
+    [{ source: 'a' }] as { source: string; createdAt: string }[],
+    (c) => c.source === 'b'
+  );
   expect(latest).toBeUndefined();
 });
 
@@ -138,7 +142,7 @@ test('should reject a source without enabled', () => {
 
 test('should report a field-level error for a missing enabled', () => {
   const result = testSourceSchema.safeParse({ username: 'user' });
-  expect(result.error.issues).toEqual([
+  expect(result.error?.issues).toEqual([
     expect.objectContaining({
       path: ['enabled'],
       message: 'Invalid input: expected boolean, received undefined',
@@ -151,7 +155,7 @@ test('should report a field-level error for a non-boolean enabled', () => {
     enabled: 'true',
     username: 'user',
   });
-  expect(result.error.issues).toEqual([
+  expect(result.error?.issues).toEqual([
     expect.objectContaining({
       path: ['enabled'],
       message: 'Invalid input: expected boolean, received string',

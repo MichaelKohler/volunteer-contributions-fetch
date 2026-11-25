@@ -4,12 +4,37 @@
 // times, dates) keeps the tabs and newlines the PHP template outputs.
 
 const BASE_URL = 'https://community.mozilla.org';
-const tabs = (count) => '\t'.repeat(count);
+const tabs = (count: number) => '\t'.repeat(count);
 
 const locationIcon = `<svg width="16" height="18" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 7.66602C14 12.3327 8 16.3327 8 16.3327" stroke="#737373"/></svg>`;
 const showMoreIcon = `<svg width="8" height="10" viewBox="0 0 8 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.33301 8.66634L5.99967 4.99967L2.33301 1.33301" stroke="#0060DF"></path></svg>`;
 
-export function event({ slug, date, title, time, location, hidden = false }) {
+interface EventFixture {
+  slug: string;
+  date: string;
+  title: string;
+  time: string;
+  location?: string;
+  hidden?: boolean;
+}
+
+interface CampaignFixture {
+  slug: string;
+  title: string;
+  start: string;
+  end?: string;
+  tags?: string[];
+  hidden?: boolean;
+}
+
+export function event({
+  slug,
+  date,
+  title,
+  time,
+  location,
+  hidden = false,
+}: EventFixture): string {
   const hiddenClass = hidden ? ' hidden' : '';
   const locationMarkup = location
     ? `
@@ -41,7 +66,7 @@ export function campaign({
   end,
   tags = [],
   hidden = false,
-}) {
+}: CampaignFixture): string {
   const hiddenClass = hidden ? ' hidden' : '';
   const dates = end
     ? `\n${tabs(9)}${start}${tabs(10)}-\n${tabs(11)}${end}${tabs(8)}`
@@ -70,7 +95,7 @@ export function campaign({
               <hr class="profile__group-line${hiddenClass}" />`;
 }
 
-function card(heading, entries) {
+function card(heading: string, entries: string[]): string {
   if (!entries.length) {
     return '';
   }
@@ -89,7 +114,10 @@ function card(heading, entries) {
           </div>`;
 }
 
-export function profilePage({ events = [], campaigns = [] } = {}) {
+export function profilePage({
+  events = [],
+  campaigns = [],
+}: { events?: string[]; campaigns?: string[] } = {}): string {
   return `<!DOCTYPE html>
 <html lang="en-US">
 <head>
@@ -116,27 +144,27 @@ export function profilePage({ events = [], campaigns = [] } = {}) {
 `;
 }
 
-const eventA = {
+const eventA: EventFixture = {
   slug: 'event-a',
   date: 'Aug 08',
   title: 'EventA',
   time: 'August 08, 2022 ∙ 18:00',
   location: 'Online Event',
 };
-const eventB = {
+const eventB: EventFixture = {
   slug: 'event-b',
   date: 'Aug 11',
   title: 'EventB',
   time: 'August 11, 2022 ∙ 09:30',
   location: 'Berlin, Germany',
 };
-const campaignA = {
+const campaignA: CampaignFixture = {
   slug: 'campaign-a',
   title: 'CampaignA',
   start: 'January 01 2022',
   tags: ['Firefox'],
 };
-const campaignB = {
+const campaignB: CampaignFixture = {
   slug: 'campaign-b',
   title: 'CampaignB',
   start: 'February 01',

@@ -8,7 +8,34 @@ import * as osm from './osm.js';
 import * as wiki from './wiki.js';
 
 import * as validator from './validator.js';
-import { backfillGitHub, fetchAll } from './fetch.js';
+import {
+  backfillGitHub as backfillGitHubTyped,
+  fetchAll as fetchAllTyped,
+} from './fetch.js';
+import type { BackfillOptions } from './github.js';
+import { loose } from './test-helpers.js';
+import type { Contribution } from './types.js';
+
+// validateConfig is mocked and the sources are stubbed, so configs and
+// contributions only carry what a test needs.
+function fetchAll(config: unknown, contributions?: unknown) {
+  return fetchAllTyped(
+    config as validator.ConfigInput,
+    contributions as Contribution[] | undefined
+  );
+}
+
+function backfillGitHub(
+  config: unknown,
+  options: unknown,
+  contributions?: unknown
+) {
+  return backfillGitHubTyped(
+    config as validator.ConfigInput,
+    options as BackfillOptions,
+    contributions as Contribution[] | undefined
+  );
+}
 
 const config = {
   outputFile: '/tmp/file',
@@ -31,13 +58,15 @@ beforeEach(() => {
   vi.spyOn(fs, 'rename');
   vi.spyOn(fs, 'rm');
   vi.spyOn(JSON, 'parse');
-  vi.spyOn(validator, 'validateConfig').mockImplementation((config) => config);
-  vi.spyOn(communityPortal, 'gather').mockReturnValue([]);
-  vi.spyOn(discourse, 'gather').mockReturnValue([]);
-  vi.spyOn(github, 'gather').mockReturnValue([]);
-  vi.spyOn(github, 'backfill').mockReturnValue([]);
-  vi.spyOn(osm, 'gather').mockReturnValue([]);
-  vi.spyOn(wiki, 'gather').mockReturnValue([]);
+  loose(vi.spyOn(validator, 'validateConfig')).mockImplementation(
+    (config) => config
+  );
+  loose(vi.spyOn(communityPortal, 'gather')).mockReturnValue([]);
+  loose(vi.spyOn(discourse, 'gather')).mockReturnValue([]);
+  loose(vi.spyOn(github, 'gather')).mockReturnValue([]);
+  loose(vi.spyOn(github, 'backfill')).mockReturnValue([]);
+  loose(vi.spyOn(osm, 'gather')).mockReturnValue([]);
+  loose(vi.spyOn(wiki, 'gather')).mockReturnValue([]);
 });
 
 afterEach(() => {
@@ -45,9 +74,9 @@ afterEach(() => {
 });
 
 test('should create a contributions file if file does not exist', async () => {
-  const error = new Error('oh no, no config file!');
+  const error: NodeJS.ErrnoException = new Error('oh no, no config file!');
   error.code = 'ENOENT';
-  fs.readFile.mockImplementationOnce(() => {
+  loose(fs.readFile).mockImplementationOnce(() => {
     throw error;
   });
   await fetchAll(config);
@@ -57,9 +86,9 @@ test('should create a contributions file if file does not exist', async () => {
 });
 
 test('should ignore passed contributions if output file does not exist', async () => {
-  const error = new Error('oh no, no config file!');
+  const error: NodeJS.ErrnoException = new Error('oh no, no config file!');
   error.code = 'ENOENT';
-  fs.readFile.mockImplementationOnce(() => {
+  loose(fs.readFile).mockImplementationOnce(() => {
     throw error;
   });
   const passedContributions = [{ source: 'existing' }];
@@ -71,20 +100,20 @@ test('should ignore passed contributions if output file does not exist', async (
 });
 
 test('should write output file through a temporary file', async () => {
-  JSON.parse.mockReturnValueOnce([]);
-  github.gather.mockResolvedValueOnce([{ source: 'github' }]);
+  loose(JSON.parse).mockReturnValueOnce([]);
+  loose(github.gather).mockResolvedValueOnce([{ source: 'github' }]);
 
   await fetchAll(config);
   expect(fs.writeFile).toHaveBeenCalledOnce();
-  expect(fs.writeFile.mock.calls[0][0]).toEqual(tempFile);
+  expect(loose(fs.writeFile).mock.calls[0]?.[0]).toEqual(tempFile);
   expect(fs.rename).toHaveBeenCalledOnce();
   expect(fs.rename).toHaveBeenCalledWith(tempFile, config.outputFile);
 });
 
 test('should not replace output file and remove temporary file if writing fails', async () => {
-  JSON.parse.mockReturnValueOnce([]);
-  github.gather.mockResolvedValueOnce([{ source: 'github' }]);
-  fs.writeFile.mockRejectedValueOnce(new Error('disk full'));
+  loose(JSON.parse).mockReturnValueOnce([]);
+  loose(github.gather).mockResolvedValueOnce([{ source: 'github' }]);
+  loose(fs.writeFile).mockRejectedValueOnce(new Error('disk full'));
 
   await expect(fetchAll(config)).rejects.toThrow('disk full');
   expect(fs.rename).not.toHaveBeenCalled();
@@ -92,20 +121,20 @@ test('should not replace output file and remove temporary file if writing fails'
 });
 
 test('should use a unique temporary file for each write', async () => {
-  JSON.parse.mockReturnValue([]);
-  github.gather.mockResolvedValue([{ source: 'github' }]);
+  loose(JSON.parse).mockReturnValue([]);
+  loose(github.gather).mockResolvedValue([{ source: 'github' }]);
 
   await Promise.all([fetchAll(config), fetchAll(config)]);
   expect(fs.writeFile).toHaveBeenCalledTimes(2);
-  const [first, second] = fs.writeFile.mock.calls.map(([file]) => file);
+  const [first, second] = loose(fs.writeFile).mock.calls.map(([file]) => file);
   expect(first).not.toBe(second);
   expect(fs.rename).toHaveBeenCalledWith(first, config.outputFile);
   expect(fs.rename).toHaveBeenCalledWith(second, config.outputFile);
 });
 
 test('should throw and not overwrite file if output file is corrupt', async () => {
-  fs.readFile.mockResolvedValueOnce('{ not json');
-  github.gather.mockResolvedValueOnce([{ source: 'github' }]);
+  loose(fs.readFile).mockResolvedValueOnce('{ not json');
+  loose(github.gather).mockResolvedValueOnce([{ source: 'github' }]);
 
   await expect(fetchAll(config)).rejects.toThrow(
     'Could not read existing output file'
@@ -115,8 +144,8 @@ test('should throw and not overwrite file if output file is corrupt', async () =
 });
 
 test('should throw and not overwrite file if output file is not an array', async () => {
-  fs.readFile.mockResolvedValueOnce('{}');
-  github.gather.mockResolvedValueOnce([{ source: 'github' }]);
+  loose(fs.readFile).mockResolvedValueOnce('{}');
+  loose(github.gather).mockResolvedValueOnce([{ source: 'github' }]);
 
   await expect(fetchAll(config)).rejects.toThrow(
     'Could not read existing output file'
@@ -126,29 +155,31 @@ test('should throw and not overwrite file if output file is not an array', async
 });
 
 test('should throw and not overwrite file if output file is not readable', async () => {
-  const error = new Error('permission denied');
+  const error: NodeJS.ErrnoException = new Error('permission denied');
   error.code = 'EACCES';
-  fs.readFile.mockRejectedValueOnce(error);
+  loose(fs.readFile).mockRejectedValueOnce(error);
 
   await expect(fetchAll(config)).rejects.toThrow('permission denied');
   expect(fs.writeFile).not.toHaveBeenCalled();
 });
 
 test('should not write file if there was nothing to do', async () => {
-  JSON.parse.mockReturnValueOnce([]);
+  loose(JSON.parse).mockReturnValueOnce([]);
   await fetchAll(config);
   expect(fs.writeFile).not.toHaveBeenCalled();
 });
 
 test('should consider saved contributions if not full-fetch source', async () => {
   const existingContributions = [{ source: 'keep_me' }];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  github.gather.mockResolvedValueOnce([{ source: 'github' }]);
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(github.gather).mockResolvedValueOnce([{ source: 'github' }]);
 
   await fetchAll(config);
   expect(fs.writeFile).toHaveBeenCalledOnce();
 
-  expect(originalJSONParse(fs.writeFile.mock.calls[0][1]).length).toBe(2);
+  expect(
+    originalJSONParse(loose(fs.writeFile).mock.calls[0]?.[1] as string).length
+  ).toBe(2);
 });
 
 test('should ignore saved contributions if full-fetch source', async () => {
@@ -156,19 +187,21 @@ test('should ignore saved contributions if full-fetch source', async () => {
     { source: 'wiki', link: 'https://example.com/1' },
     { source: 'wiki', link: 'https://example.com/2' },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  github.gather.mockResolvedValueOnce([
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(github.gather).mockResolvedValueOnce([
     { source: 'github', link: 'https://example.com/3' },
   ]);
-  wiki.gather.mockResolvedValueOnce([
+  loose(wiki.gather).mockResolvedValueOnce([
     { source: 'wiki', link: 'https://example.com/4' },
   ]);
 
   await fetchAll(wikiEnabledConfig);
   expect(fs.writeFile).toHaveBeenCalledOnce();
 
-  const written = originalJSONParse(fs.writeFile.mock.calls[0][1]);
-  expect(written.map(({ link }) => link).sort()).toEqual([
+  const written = originalJSONParse(
+    loose(fs.writeFile).mock.calls[0]?.[1] as string
+  );
+  expect(written.map(({ link }: Contribution) => link).sort()).toEqual([
     'https://example.com/3',
     'https://example.com/4',
   ]);
@@ -179,15 +212,17 @@ test('should keep saved contributions if full-fetch source returns nothing', asy
     { source: 'wiki', link: 'https://example.com/1' },
     { source: 'wiki', link: 'https://example.com/2' },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  github.gather.mockResolvedValueOnce([
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(github.gather).mockResolvedValueOnce([
     { source: 'github', link: 'https://example.com/3' },
   ]);
 
   await fetchAll(wikiEnabledConfig);
   expect(fs.writeFile).toHaveBeenCalledOnce();
 
-  expect(originalJSONParse(fs.writeFile.mock.calls[0][1]).length).toBe(3);
+  expect(
+    originalJSONParse(loose(fs.writeFile).mock.calls[0]?.[1] as string).length
+  ).toBe(3);
 });
 
 test('should keep saved contributions only of full-fetch categories returning nothing', async () => {
@@ -195,16 +230,18 @@ test('should keep saved contributions only of full-fetch categories returning no
     { source: 'community-portal-events', link: 'https://example.com/1' },
     { source: 'community-portal-campaigns', link: 'https://example.com/2' },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  communityPortal.gather.mockResolvedValueOnce([
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(communityPortal.gather).mockResolvedValueOnce([
     { source: 'community-portal-events', link: 'https://example.com/3' },
   ]);
 
   await fetchAll({ ...config, communityPortal: { enabled: true } });
   expect(fs.writeFile).toHaveBeenCalledOnce();
 
-  const written = originalJSONParse(fs.writeFile.mock.calls[0][1]);
-  expect(written.map(({ link }) => link).sort()).toEqual([
+  const written = originalJSONParse(
+    loose(fs.writeFile).mock.calls[0]?.[1] as string
+  );
+  expect(written.map(({ link }: Contribution) => link).sort()).toEqual([
     'https://example.com/2',
     'https://example.com/3',
   ]);
@@ -215,41 +252,45 @@ test('should keep saved contributions of disabled full-fetch source', async () =
     { source: 'wiki', link: 'https://example.com/1' },
     { source: 'discourse-posts', link: 'https://example.com/2' },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  github.gather.mockResolvedValueOnce([
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(github.gather).mockResolvedValueOnce([
     { source: 'github', link: 'https://example.com/3' },
   ]);
 
   await fetchAll({ ...config, discourse: { enabled: false } });
   expect(fs.writeFile).toHaveBeenCalledOnce();
 
-  expect(originalJSONParse(fs.writeFile.mock.calls[0][1]).length).toBe(3);
+  expect(
+    originalJSONParse(loose(fs.writeFile).mock.calls[0]?.[1] as string).length
+  ).toBe(3);
 });
 
 test('should take all return values', async () => {
-  const existingContributions = [];
-  JSON.parse.mockReturnValue(existingContributions);
+  const existingContributions: Contribution[] = [];
+  loose(JSON.parse).mockReturnValue(existingContributions);
 
-  communityPortal.gather.mockResolvedValueOnce([
+  loose(communityPortal.gather).mockResolvedValueOnce([
     { source: 'community-portal' },
   ]);
-  discourse.gather.mockResolvedValueOnce([{ source: 'discourse' }]);
-  github.gather.mockResolvedValueOnce([{ source: 'github' }]);
-  osm.gather.mockResolvedValueOnce([{ source: 'osm' }]);
-  wiki.gather.mockResolvedValueOnce([{ source: 'wiki' }]);
+  loose(discourse.gather).mockResolvedValueOnce([{ source: 'discourse' }]);
+  loose(github.gather).mockResolvedValueOnce([{ source: 'github' }]);
+  loose(osm.gather).mockResolvedValueOnce([{ source: 'osm' }]);
+  loose(wiki.gather).mockResolvedValueOnce([{ source: 'wiki' }]);
 
   await fetchAll(config);
   expect(fs.writeFile).toHaveBeenCalledOnce();
 
-  expect(originalJSONParse(fs.writeFile.mock.calls[0][1]).length).toBe(5);
+  expect(
+    originalJSONParse(loose(fs.writeFile).mock.calls[0]?.[1] as string).length
+  ).toBe(5);
 });
 
 test('should return contributions', async () => {
-  const existingContributions = [];
-  JSON.parse.mockReturnValue(existingContributions);
+  const existingContributions: Contribution[] = [];
+  loose(JSON.parse).mockReturnValue(existingContributions);
 
   const contributions = [{ source: 'community-portal' }];
-  communityPortal.gather.mockResolvedValueOnce(contributions);
+  loose(communityPortal.gather).mockResolvedValueOnce(contributions);
 
   const result = await fetchAll(config);
   expect(result).toStrictEqual(contributions);
@@ -257,7 +298,7 @@ test('should return contributions', async () => {
 
 test('should consider passed contributions', async () => {
   const contributions = [{ source: 'community-portal' }];
-  communityPortal.gather.mockResolvedValueOnce(contributions);
+  loose(communityPortal.gather).mockResolvedValueOnce(contributions);
   const existingContributions = [
     { source: 'existing', link: 'https://example.com/1' },
     { source: 'existing', link: 'https://example.com/2' },
@@ -275,18 +316,20 @@ test('should write file if one entry was added and another removed', async () =>
       createdAt: '2024-01-01T00:00:00.000Z',
     },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
   const added = {
     source: 'wiki',
     link: 'https://example.com/added',
     createdAt: new Date('2024-01-02T00:00:00.000Z'),
   };
-  wiki.gather.mockResolvedValueOnce([added]);
+  loose(wiki.gather).mockResolvedValueOnce([added]);
 
   await fetchAll(wikiEnabledConfig);
   expect(fs.writeFile).toHaveBeenCalledOnce();
 
-  const written = originalJSONParse(fs.writeFile.mock.calls[0][1]);
+  const written = originalJSONParse(
+    loose(fs.writeFile).mock.calls[0]?.[1] as string
+  );
   expect(written).toStrictEqual([
     {
       source: 'wiki',
@@ -304,8 +347,8 @@ test('should not write file if fetched entries match saved ones', async () => {
       createdAt: '2024-01-01T00:00:00.000Z',
     },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  wiki.gather.mockResolvedValueOnce([
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(wiki.gather).mockResolvedValueOnce([
     {
       source: 'wiki',
       link: 'https://example.com/1',
@@ -326,8 +369,8 @@ test('should remove duplicate contributions', async () => {
       createdAt: '2024-01-01T00:00:00.000Z',
     },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  github.gather.mockResolvedValueOnce([
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(github.gather).mockResolvedValueOnce([
     {
       source: 'github-commit',
       type: 'commit',
@@ -345,7 +388,9 @@ test('should remove duplicate contributions', async () => {
   const result = await fetchAll(config);
   expect(result.length).toBe(2);
   expect(fs.writeFile).toHaveBeenCalledOnce();
-  expect(originalJSONParse(fs.writeFile.mock.calls[0][1]).length).toBe(2);
+  expect(
+    originalJSONParse(loose(fs.writeFile).mock.calls[0]?.[1] as string).length
+  ).toBe(2);
 });
 
 test('should not write file if only key order and sort order differ', async () => {
@@ -361,8 +406,8 @@ test('should not write file if only key order and sort order differ', async () =
       createdAt: '2024-01-01T00:00:00.000Z',
     },
   ];
-  JSON.parse.mockReturnValueOnce(existingContributions);
-  wiki.gather.mockResolvedValueOnce([
+  loose(JSON.parse).mockReturnValueOnce(existingContributions);
+  loose(wiki.gather).mockResolvedValueOnce([
     {
       source: 'wiki',
       link: 'https://example.com/2',
@@ -402,21 +447,21 @@ const githubContribution = {
 };
 
 test('should tag fetched contributions', async () => {
-  JSON.parse.mockReturnValueOnce([]);
-  github.gather.mockResolvedValueOnce([githubContribution]);
+  loose(JSON.parse).mockReturnValueOnce([]);
+  loose(github.gather).mockResolvedValueOnce([githubContribution]);
 
   const result = await fetchAll(githubTagConfig);
   expect(result).toEqual([{ ...githubContribution, tags: ['employed'] }]);
 });
 
 test('should not add tags key if no rule matches', async () => {
-  JSON.parse.mockReturnValueOnce([]);
+  loose(JSON.parse).mockReturnValueOnce([]);
   const old = { ...githubContribution, createdAt: '2019-01-01T00:00:00.000Z' };
-  github.gather.mockResolvedValueOnce([old]);
+  loose(github.gather).mockResolvedValueOnce([old]);
 
   const result = await fetchAll(githubTagConfig);
   expect(result).toEqual([old]);
-  expect('tags' in result[0]).toBe(false);
+  expect(result[0]).not.toHaveProperty('tags');
 });
 
 test('should retag saved contributions', async () => {
@@ -424,21 +469,20 @@ test('should retag saved contributions', async () => {
     ...githubContribution,
     link: 'https://github.com/other/foo/pull/1',
   };
-  JSON.parse.mockReturnValueOnce([
+  loose(JSON.parse).mockReturnValueOnce([
     githubContribution,
     { ...otherContribution, tags: ['stale'] },
   ]);
 
   await fetchAll(githubTagConfig);
   expect(fs.writeFile).toHaveBeenCalledOnce();
-  expect(originalJSONParse(fs.writeFile.mock.calls[0][1])).toEqual([
-    { ...githubContribution, tags: ['employed'] },
-    otherContribution,
-  ]);
+  expect(
+    originalJSONParse(loose(fs.writeFile).mock.calls[0]?.[1] as string)
+  ).toEqual([{ ...githubContribution, tags: ['employed'] }, otherContribution]);
 });
 
 test('should not write file if saved contributions are tagged already', async () => {
-  JSON.parse.mockReturnValueOnce([
+  loose(JSON.parse).mockReturnValueOnce([
     { ...githubContribution, tags: ['employed'] },
   ]);
 
@@ -448,7 +492,7 @@ test('should not write file if saved contributions are tagged already', async ()
 
 test('should keep tags of contributions of a disabled source', async () => {
   const tagged = { ...githubContribution, tags: ['employed'] };
-  JSON.parse.mockReturnValueOnce([tagged]);
+  loose(JSON.parse).mockReturnValueOnce([tagged]);
 
   const result = await fetchAll({ ...config, github: { enabled: false } });
   expect(result).toEqual([tagged]);
@@ -456,16 +500,16 @@ test('should keep tags of contributions of a disabled source', async () => {
 });
 
 test('should not tag private GitHub contributions', async () => {
-  JSON.parse.mockReturnValueOnce([]);
+  loose(JSON.parse).mockReturnValueOnce([]);
   const privateContribution = { ...githubContribution, link: '' };
-  github.gather.mockResolvedValueOnce([privateContribution]);
+  loose(github.gather).mockResolvedValueOnce([privateContribution]);
 
   const result = await fetchAll(githubTagConfig);
   expect(result).toEqual([privateContribution]);
 });
 
 test('should tag contributions of other sources without pattern', async () => {
-  JSON.parse.mockReturnValueOnce([]);
+  loose(JSON.parse).mockReturnValueOnce([]);
   const edit = {
     createdAt: '2021-01-01T00:00:00.000Z',
     description: 'Edit',
@@ -473,7 +517,7 @@ test('should tag contributions of other sources without pattern', async () => {
     type: 'OpenStreetMaps Edit',
     source: osm.OSM_CATEGORY,
   };
-  osm.gather.mockResolvedValueOnce([edit]);
+  loose(osm.gather).mockResolvedValueOnce([edit]);
 
   const result = await fetchAll({
     ...config,
@@ -493,8 +537,8 @@ test('backfillGitHub should add backfilled contributions to the output file', as
     source: 'github-commit',
     link: 'https://github.com/org/repo/commit/abc',
   };
-  JSON.parse.mockReturnValueOnce([saved]);
-  github.backfill.mockResolvedValueOnce([backfilled]);
+  loose(JSON.parse).mockReturnValueOnce([saved]);
+  loose(github.backfill).mockResolvedValueOnce([backfilled]);
   const options = { orgs: ['org'], startDate: '2016-01-01' };
 
   const result = await backfillGitHub(config, options);
@@ -502,7 +546,9 @@ test('backfillGitHub should add backfilled contributions to the output file', as
   expect(github.backfill).toHaveBeenCalledWith(config, options, [saved]);
   expect(result).toStrictEqual([saved, backfilled]);
   expect(fs.writeFile).toHaveBeenCalledOnce();
-  expect(JSON.parse(fs.writeFile.mock.calls[0][1])).toStrictEqual([
+  expect(
+    JSON.parse(loose(fs.writeFile).mock.calls[0]?.[1] as string)
+  ).toStrictEqual([
     saved,
     { ...backfilled, createdAt: '2016-05-01T00:00:00.000Z' },
   ]);
@@ -512,7 +558,7 @@ test('backfillGitHub should add backfilled contributions to the output file', as
 });
 
 test('backfillGitHub should not write the file if nothing was backfilled', async () => {
-  JSON.parse.mockReturnValueOnce([{ source: 'github-commit' }]);
+  loose(JSON.parse).mockReturnValueOnce([{ source: 'github-commit' }]);
 
   await backfillGitHub(config, { orgs: ['org'] });
 
@@ -522,7 +568,7 @@ test('backfillGitHub should not write the file if nothing was backfilled', async
 test('backfillGitHub should use passed contributions without output file', async () => {
   const passed = [{ createdAt: '2022-03-01', source: 'github-commit' }];
   const backfilled = { createdAt: '2016-05-01', source: 'github-commit' };
-  github.backfill.mockResolvedValueOnce([backfilled]);
+  loose(github.backfill).mockResolvedValueOnce([backfilled]);
 
   const result = await backfillGitHub({}, { orgs: ['org'] }, passed);
 
