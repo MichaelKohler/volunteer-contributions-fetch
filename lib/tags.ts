@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { Contribution } from './types.js';
 import { dateSchema } from './utils.js';
 
 export const dateRangeSchema = z
@@ -18,7 +19,12 @@ export const tagRuleSchema = z.strictObject({
   dateRange: dateRangeSchema.optional(),
 });
 
-function isInDateRange(createdAt, dateRange) {
+type DateRange = z.output<typeof dateRangeSchema>;
+
+// Only the GitHub source supports a pattern, see github.ts.
+export type TagRule = z.output<typeof tagRuleSchema> & { pattern?: RegExp };
+
+function isInDateRange(createdAt: Date | string, dateRange?: DateRange) {
   if (!dateRange) {
     return true;
   }
@@ -37,17 +43,20 @@ function isInDateRange(createdAt, dateRange) {
 
 // A rule with a pattern never matches a contribution without a link (e.g. one
 // in a private GitHub repository), even if the pattern matches an empty string.
-function matchesPattern(link, pattern) {
+function matchesPattern(link: string | undefined, pattern?: RegExp) {
   if (!pattern) {
     return true;
   }
 
-  return Boolean(link) && pattern.test(link);
+  return !!link && pattern.test(link);
 }
 
 // Returns the first rule matching the contribution, the order of the rules
 // defines their priority.
-export function findTagRule(rules = [], contribution) {
+export function findTagRule<R extends TagRule>(
+  rules: R[] = [],
+  contribution: Pick<Contribution, 'createdAt' | 'link'>
+): R | undefined {
   return rules.find(
     (rule) =>
       isInDateRange(contribution.createdAt, rule.dateRange) &&
@@ -55,7 +64,7 @@ export function findTagRule(rules = [], contribution) {
   );
 }
 
-function haveSameTags(tagsA, tagsB) {
+function haveSameTags(tagsA: string[], tagsB: unknown) {
   return (
     Array.isArray(tagsB) &&
     tagsA.length === tagsB.length &&
@@ -65,16 +74,19 @@ function haveSameTags(tagsA, tagsB) {
 
 // Sets the tags of the first matching rule and removes stale tags if no rule
 // matches anymore. The contribution itself is returned if nothing changed.
-export function applyTagRules(rules, contribution) {
+export function applyTagRules<C extends Contribution>(
+  rules: TagRule[] | undefined,
+  contribution: C
+): C {
   const tags = findTagRule(rules, contribution)?.tags;
   if (!tags) {
     if (!('tags' in contribution)) {
       return contribution;
     }
 
-    // eslint-disable-next-line no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { tags: _staleTags, ...untagged } = contribution;
-    return untagged;
+    return untagged as C;
   }
 
   if (haveSameTags(tags, contribution.tags)) {

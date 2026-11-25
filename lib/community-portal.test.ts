@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import * as fixtures from '../fixtures/community-portal.js';
 import { gather, communityPortalSchema } from './community-portal.js';
+import { mockedFetch } from './test-helpers.js';
 
 const config = {
   communityPortal: {
@@ -11,8 +12,8 @@ const config = {
   },
 };
 
-function mockDocument(html) {
-  fetch.mockResolvedValueOnce({
+function mockDocument(html: string) {
+  mockedFetch().mockResolvedValueOnce({
     ok: true,
     url: 'https://community.mozilla.org/user',
     text: () => Promise.resolve(html),
@@ -80,8 +81,7 @@ test('should remove duplicate events', async () => {
 
   const contributions = await gather(config);
 
-  expect(contributions.length).toBe(1);
-  expect(contributions[0].description).toBe('EventA');
+  expect(contributions).toMatchObject([{ description: 'EventA' }]);
 });
 
 test('should remove duplicate campaigns', async () => {
@@ -89,8 +89,7 @@ test('should remove duplicate campaigns', async () => {
 
   const contributions = await gather(config);
 
-  expect(contributions.length).toBe(1);
-  expect(contributions[0].description).toBe('CampaignA');
+  expect(contributions).toMatchObject([{ description: 'CampaignA' }]);
 });
 
 test('should only fetch events and campaigns that are not in the future', async () => {
@@ -98,15 +97,16 @@ test('should only fetch events and campaigns that are not in the future', async 
 
   const contributions = await gather(config);
 
-  expect(contributions.length).toBe(2);
-  expect(contributions[0].createdAt).toStrictEqual(
-    new Date(Date.UTC(2022, 7, 11, 9, 30))
-  );
-  expect(contributions[0].description).toBe('PastEvent');
-  expect(contributions[1].createdAt).toStrictEqual(
-    new Date(Date.UTC(2022, 1, 1))
-  );
-  expect(contributions[1].description).toBe('PastCampaign');
+  expect(contributions).toMatchObject([
+    {
+      createdAt: new Date(Date.UTC(2022, 7, 11, 9, 30)),
+      description: 'PastEvent',
+    },
+    {
+      createdAt: new Date(Date.UTC(2022, 1, 1)),
+      description: 'PastCampaign',
+    },
+  ]);
 });
 
 test('should take the start year of campaigns spanning a year boundary', async () => {
@@ -114,10 +114,9 @@ test('should take the start year of campaigns spanning a year boundary', async (
 
   const contributions = await gather(config);
 
-  expect(contributions.length).toBe(1);
-  expect(contributions[0].createdAt).toStrictEqual(
-    new Date(Date.UTC(2021, 11, 1))
-  );
+  expect(contributions).toMatchObject([
+    { createdAt: new Date(Date.UTC(2021, 11, 1)) },
+  ]);
 });
 
 test('should include entries hidden behind "View All"', async () => {
@@ -241,18 +240,16 @@ test('should format with custom types', async () => {
   const contributions = await gather(specificTypeConfig);
 
   // Event
-  expect(contributions[0].type).toBe(
-    specificTypeConfig.communityPortal.participationType
-  );
-  expect(contributions[1].type).toBe(
-    specificTypeConfig.communityPortal.participationType
-  );
-  expect(contributions[2].type).toBe(
-    specificTypeConfig.communityPortal.campaignType
-  );
-  expect(contributions[3].type).toBe(
-    specificTypeConfig.communityPortal.campaignType
-  );
+  const { participationType, campaignType } =
+    specificTypeConfig.communityPortal;
+  expect(contributions).toMatchObject([
+    // Events
+    { type: participationType },
+    { type: participationType },
+    // Campaigns
+    { type: campaignType },
+    { type: campaignType },
+  ]);
 });
 
 test('should fetch the profile with a timeout signal', async () => {
@@ -267,7 +264,7 @@ test('should fetch the profile with a timeout signal', async () => {
 });
 
 test('should throw on unsuccessful response', async () => {
-  fetch.mockResolvedValueOnce({ ok: false, status: 500 });
+  mockedFetch().mockResolvedValueOnce({ ok: false, status: 500 });
 
   await expect(gather(config)).rejects.toThrow(
     'Community Portal request to https://community.mozilla.org/user failed with status 500'

@@ -2,24 +2,36 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import * as fetcher from './github-fetcher.js';
 import {
+  type BackfillOptions,
   backfill as backfillUnparsed,
   gather as gatherUnparsed,
   githubSchema,
 } from './github.js';
+import { loose } from './test-helpers.js';
+import type { Contribution } from './types.js';
+
+// Configs and contributions in these tests only carry what a test needs.
+interface TestConfig {
+  github?: object;
+}
 
 // fetchAll hands gather the parsed config, so apply the schema defaults here too.
-function gather({ github }, existingContributions) {
+function gather({ github }: TestConfig, existingContributions?: unknown) {
   return gatherUnparsed(
     { github: github && githubSchema.parse(github) },
-    existingContributions
+    existingContributions as Contribution[] | undefined
   );
 }
 
-function backfill({ github }, options, existingContributions = []) {
+function backfill(
+  { github }: TestConfig,
+  options: unknown,
+  existingContributions: unknown = []
+) {
   return backfillUnparsed(
     { github: github && githubSchema.parse(github) },
-    options,
-    existingContributions
+    options as BackfillOptions,
+    existingContributions as Contribution[]
   );
 }
 
@@ -52,8 +64,8 @@ beforeEach(() => {
 
   process.env.GITHUB_TOKEN = 'some_test_token';
 
-  fetcher.searchCommits.mockResolvedValue([]);
-  fetcher.searchIssues.mockResolvedValue([]);
+  loose(fetcher.searchCommits).mockResolvedValue([]);
+  loose(fetcher.searchIssues).mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -207,7 +219,7 @@ test('should not fetch if disabled - by leaving off config value', async () => {
 });
 
 test('should throw if private repo scope token is used and config does not allow private repo access', async () => {
-  fetcher.throwIfTokenHasPrivateRepoScope.mockImplementation(() => {
+  loose(fetcher.throwIfTokenHasPrivateRepoScope).mockImplementation(() => {
     throw new Error('PRIVATE_SCOPE');
   });
 
@@ -215,7 +227,7 @@ test('should throw if private repo scope token is used and config does not allow
 });
 
 test('should not throw if private repo scope token is used but config does allow private repo access', async () => {
-  fetcher.throwIfTokenHasPrivateRepoScope.mockImplementation(() => {
+  loose(fetcher.throwIfTokenHasPrivateRepoScope).mockImplementation(() => {
     throw new Error('PRIVATE_SCOPE');
   });
 
@@ -230,7 +242,7 @@ test('should not throw if private repo scope token is used but config does allow
 });
 
 test('should throw if error is not specifically private scope error', async () => {
-  fetcher.throwIfTokenHasPrivateRepoScope.mockImplementation(() => {
+  loose(fetcher.throwIfTokenHasPrivateRepoScope).mockImplementation(() => {
     throw new Error('SOMETHING_ELSE');
   });
 
@@ -248,7 +260,7 @@ test('should fetch commits until stop date', async () => {
 
   // We want to fetch 2 pages for the first period, and one page for the subsequent periods.
   // We expect 3 periods to be queried based on the passed stopDate and the faked clock.
-  fetcher.searchCommits
+  loose(fetcher.searchCommits)
     .mockResolvedValueOnce(
       new Array(100).fill(0).map(() => ({ createdAt: new Date('2022-03-01') }))
     )
@@ -264,22 +276,22 @@ test('should fetch commits until stop date', async () => {
 
   await gather(commitConfig);
 
-  expect(fetcher.searchCommits.mock.calls[0][0]).toStrictEqual({
+  expect(loose(fetcher.searchCommits).mock.calls[0]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+author-date:2022-03-01..2022-03-31`,
     sort: 'committer-date',
     page: 1,
   });
-  expect(fetcher.searchCommits.mock.calls[1][0]).toStrictEqual({
+  expect(loose(fetcher.searchCommits).mock.calls[1]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+author-date:2022-03-01..2022-03-31`,
     sort: 'committer-date',
     page: 2,
   });
-  expect(fetcher.searchCommits.mock.calls[2][0]).toStrictEqual({
+  expect(loose(fetcher.searchCommits).mock.calls[2]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+author-date:2022-02-01..2022-02-28`,
     sort: 'committer-date',
     page: 1,
   });
-  expect(fetcher.searchCommits.mock.calls[3][0]).toStrictEqual({
+  expect(loose(fetcher.searchCommits).mock.calls[3]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+author-date:2022-01-01..2022-01-31`,
     sort: 'committer-date',
     page: 1,
@@ -302,7 +314,9 @@ test('should calculate month periods correctly in time zones behind UTC', async 
 
     await gather(commitConfig);
 
-    const queries = fetcher.searchCommits.mock.calls.map(([args]) => args.q);
+    const queries = loose(fetcher.searchCommits).mock.calls.map(
+      ([args]) => args.q
+    );
     expect(queries).toStrictEqual([
       `author:${config.github.username}+author-date:2022-03-01..2022-03-31`,
       `author:${config.github.username}+author-date:2022-02-01..2022-02-28`,
@@ -330,7 +344,7 @@ test('should fetch the month of the latest contribution if it is on the last day
       createdAt: '2022-01-31T10:00:00Z',
     },
   ];
-  fetcher.searchIssues
+  loose(fetcher.searchIssues)
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce(
@@ -343,8 +357,8 @@ test('should fetch the month of the latest contribution if it is on the last day
 
   const result = await gather(issueConfig, existingContributions);
 
-  const queries = fetcher.searchIssues.mock.calls
-    .map(([args]) => args.q)
+  const queries = loose(fetcher.searchIssues)
+    .mock.calls.map(([args]) => args.q)
     .filter((q) => q.endsWith('+is:issue'));
   expect(queries).toStrictEqual([
     `author:${config.github.username}+created:2022-03-01..2022-03-31+is:issue`,
@@ -372,7 +386,9 @@ test('should fetch commits for one year before the latest stored commit', async 
 
   await gather(commitConfig, existingContributions);
 
-  const queries = fetcher.searchCommits.mock.calls.map(([args]) => args.q);
+  const queries = loose(fetcher.searchCommits).mock.calls.map(
+    ([args]) => args.q
+  );
   expect(queries).toHaveLength(14);
   expect(queries.at(0)).toBe(
     `author:${config.github.username}+author-date:2022-03-01..2022-03-31`
@@ -409,7 +425,7 @@ test('should format commits', async () => {
     },
   };
 
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       commit: {
@@ -453,7 +469,7 @@ test('should format commits with custom type', async () => {
     },
   };
 
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       commit: {
@@ -473,8 +489,7 @@ test('should format commits with custom type', async () => {
   ]);
 
   const result = await gather(commitConfig);
-  expect(result.length).toBe(1);
-  expect(result[0].type).toBe(commitConfig.github.types.commit);
+  expect(result).toMatchObject([{ type: commitConfig.github.types.commit }]);
 });
 
 test('should format private commit', async () => {
@@ -488,7 +503,7 @@ test('should format private commit', async () => {
     },
   };
 
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       commit: {
@@ -508,11 +523,12 @@ test('should format private commit', async () => {
   ]);
 
   const result = await gather(commitConfig);
-  expect(result.length).toBe(1);
-  expect(result[0].description).toBe('Commit in private repository');
+  expect(result).toMatchObject([
+    { description: 'Commit in private repository' },
+  ]);
 });
 
-function createCommit(sha, date) {
+function createCommit(sha: string, date: string) {
   return {
     html_url: `https://github.com/contribution-test/foo/commit/${sha}`,
     commit: {
@@ -538,7 +554,7 @@ test('should keep commits older than the latest stored commit if not stored yet'
   };
 
   // Authored before the stored commit, but only merged afterwards
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     createCommit('merged-late', '2022-02-15'),
   ]);
 
@@ -562,7 +578,7 @@ test('should skip commits that are already stored', async () => {
     },
   };
 
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     createCommit('stored', '2022-03-01'),
     createCommit('new', '2022-02-15'),
   ]);
@@ -591,7 +607,7 @@ test('should skip stored commits of a renamed or moved repository', async () => 
     },
   };
 
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     createCommit('stored', '2022-03-01'),
     createCommit('new', '2022-02-15'),
   ]);
@@ -620,12 +636,12 @@ test('should skip private commits that are already stored', async () => {
     },
   };
 
-  const privateCommit = (sha, date) => {
+  const privateCommit = (sha: string, date: string) => {
     const commit = createCommit(sha, date);
     commit.repository.private = true;
     return commit;
   };
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     privateCommit('stored', '2022-03-01'),
     privateCommit('new', '2022-02-15'),
   ]);
@@ -655,7 +671,7 @@ test('should ignore commits from before the stopDate', async () => {
     },
   };
 
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       commit: {
@@ -690,7 +706,7 @@ test('should ignore commits not matching filter', async () => {
     },
   };
 
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/not-going-to-match-filter/foo',
       commit: {
@@ -724,7 +740,7 @@ test('should fetch issues until stop date', async () => {
 
   // We want to fetch 2 pages for the first period, and one page for the subsequent periods.
   // We expect 3 periods to be queried based on the passed stopDate and the faked clock.
-  fetcher.searchIssues
+  loose(fetcher.searchIssues)
     .mockResolvedValueOnce(
       new Array(100).fill(0).map(() => ({ createdAt: new Date('2022-03-01') }))
     )
@@ -737,22 +753,22 @@ test('should fetch issues until stop date', async () => {
 
   await gather(commitConfig);
 
-  expect(fetcher.searchIssues.mock.calls[0][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[0]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-03-01..2022-03-31+is:issue`,
     sort: 'created',
     page: 1,
   });
-  expect(fetcher.searchIssues.mock.calls[1][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[1]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-03-01..2022-03-31+is:issue`,
     sort: 'created',
     page: 2,
   });
-  expect(fetcher.searchIssues.mock.calls[2][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[2]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-02-01..2022-02-28+is:issue`,
     sort: 'created',
     page: 1,
   });
-  expect(fetcher.searchIssues.mock.calls[3][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[3]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-01-01..2022-01-31+is:issue`,
     sort: 'created',
     page: 1,
@@ -787,7 +803,7 @@ test('should format issues', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       created_at: new Date('2022-03-02'),
@@ -821,7 +837,7 @@ test('should format issues with custom type', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       created_at: new Date('2022-03-02'),
@@ -831,8 +847,9 @@ test('should format issues with custom type', async () => {
 
   const result = await gather(commitConfig);
 
-  expect(result.length).toBe(1);
-  expect(result[0].type).toBe(commitConfig.github.types.createdIssue);
+  expect(result).toMatchObject([
+    { type: commitConfig.github.types.createdIssue },
+  ]);
 });
 
 test('should format issues (PR)', async () => {
@@ -846,7 +863,7 @@ test('should format issues (PR)', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       created_at: new Date('2022-03-02'),
@@ -883,7 +900,7 @@ test('should format issues (PR) with custom type', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       created_at: new Date('2022-03-02'),
@@ -896,8 +913,7 @@ test('should format issues (PR) with custom type', async () => {
 
   const result = await gather(commitConfig);
 
-  expect(result.length).toBe(1);
-  expect(result[0].type).toBe(commitConfig.github.types.createdPR);
+  expect(result).toMatchObject([{ type: commitConfig.github.types.createdPR }]);
 });
 
 test('should ignore issues from before the stopDate', async () => {
@@ -911,7 +927,7 @@ test('should ignore issues from before the stopDate', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/contribution-test/foo',
       // Old issue
@@ -936,7 +952,7 @@ test('should ignore issues not matching filter', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       html_url: 'https://github.com/not-going-to-match-filter/foo',
       created_at: new Date('2022-03-02'),
@@ -960,7 +976,7 @@ test('should fetch PRs until stop date', async () => {
   // We want to fetch 2 pages for the first period, and one page for the subsequent periods.
   // We expect 3 periods to be queried based on the passed stopDate and the faked clock.
   // Therefore PRs start with 3 as before it searches for issues
-  fetcher.searchIssues
+  loose(fetcher.searchIssues)
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([])
     .mockResolvedValueOnce([])
@@ -976,22 +992,22 @@ test('should fetch PRs until stop date', async () => {
 
   await gather(commitConfig);
 
-  expect(fetcher.searchIssues.mock.calls[3][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[3]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-03-01..2022-03-31+is:pull-request`,
     sort: 'created',
     page: 1,
   });
-  expect(fetcher.searchIssues.mock.calls[4][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[4]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-03-01..2022-03-31+is:pull-request`,
     sort: 'created',
     page: 2,
   });
-  expect(fetcher.searchIssues.mock.calls[5][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[5]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-02-01..2022-02-28+is:pull-request`,
     sort: 'created',
     page: 1,
   });
-  expect(fetcher.searchIssues.mock.calls[6][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[6]?.[0]).toStrictEqual({
     q: `author:${config.github.username}+created:2022-01-01..2022-01-31+is:pull-request`,
     sort: 'created',
     page: 1,
@@ -1026,7 +1042,7 @@ test('should fetch reviews until stop date', async () => {
 
   // We want to fetch 2 pages for the first period, and one page for the subsequent periods.
   // We expect 3 periods to be queried based on the passed stopDate and the faked clock.
-  fetcher.searchIssues
+  loose(fetcher.searchIssues)
     .mockResolvedValueOnce(
       new Array(100).fill(0).map(() => ({
         createdAt: new Date('2022-03-01'),
@@ -1068,7 +1084,7 @@ test('should fetch reviews until stop date', async () => {
       }))
     );
 
-  fetcher.listReviews.mockResolvedValue([
+  loose(fetcher.listReviews).mockResolvedValue([
     {
       createdAt: new Date('2022-03-01'),
       user: {
@@ -1079,33 +1095,33 @@ test('should fetch reviews until stop date', async () => {
 
   await gather(commitConfig);
 
-  expect(fetcher.searchIssues.mock.calls[0][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[0]?.[0]).toStrictEqual({
     q: `reviewed-by:${config.github.username}+updated:2022-03-01..2022-03-31+is:pull-request`,
     sort: 'created',
     page: 1,
   });
-  expect(fetcher.searchIssues.mock.calls[1][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[1]?.[0]).toStrictEqual({
     q: `reviewed-by:${config.github.username}+updated:2022-03-01..2022-03-31+is:pull-request`,
     sort: 'created',
     page: 2,
   });
-  expect(fetcher.searchIssues.mock.calls[2][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[2]?.[0]).toStrictEqual({
     q: `reviewed-by:${config.github.username}+updated:2022-02-01..2022-02-28+is:pull-request`,
     sort: 'created',
     page: 1,
   });
-  expect(fetcher.searchIssues.mock.calls[3][0]).toStrictEqual({
+  expect(loose(fetcher.searchIssues).mock.calls[3]?.[0]).toStrictEqual({
     q: `reviewed-by:${config.github.username}+updated:2022-01-01..2022-01-31+is:pull-request`,
     sort: 'created',
     page: 1,
   });
 
-  const reviewSearches = fetcher.searchIssues.mock.calls.filter(([{ q }]) =>
-    q.startsWith('reviewed-by:')
+  const reviewSearches = loose(fetcher.searchIssues).mock.calls.filter(
+    ([{ q }]) => q.startsWith('reviewed-by:')
   );
   expect(reviewSearches.length).toBe(4);
   expect(fetcher.listReviews).toHaveBeenCalledTimes(111);
-  expect(fetcher.listReviews.mock.calls[0][0]).toStrictEqual({
+  expect(loose(fetcher.listReviews).mock.calls[0]?.[0]).toStrictEqual({
     owner: 'contributions-test',
     repo: 'foo',
     pull_number: 1111,
@@ -1140,7 +1156,7 @@ test('should format reviews', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1153,7 +1169,7 @@ test('should format reviews', async () => {
     },
   ]);
 
-  fetcher.listReviews.mockResolvedValueOnce([
+  loose(fetcher.listReviews).mockResolvedValueOnce([
     {
       submitted_at: new Date('2022-03-02'),
       pull_request_url: 'https://github.com/contributions-test/foo/pulls/1',
@@ -1225,7 +1241,7 @@ test('should custom format reviews', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1238,7 +1254,7 @@ test('should custom format reviews', async () => {
     },
   ]);
 
-  fetcher.listReviews.mockResolvedValueOnce([
+  loose(fetcher.listReviews).mockResolvedValueOnce([
     {
       submitted_at: new Date('2022-03-02'),
       pull_request_url: 'https://github.com/contributions-test/foo/pulls/1',
@@ -1270,10 +1286,11 @@ test('should custom format reviews', async () => {
 
   const result = await gather(commitConfig);
 
-  expect(result.length).toBe(3);
-  expect(result[0].type).toBe('CHANGE!');
-  expect(result[1].type).toBe('COMMENT!');
-  expect(result[2].type).toBe('APPROVE!');
+  expect(result).toMatchObject([
+    { type: 'CHANGE!' },
+    { type: 'COMMENT!' },
+    { type: 'APPROVE!' },
+  ]);
 });
 
 test('should ignore reviews from before the stopDate', async () => {
@@ -1287,7 +1304,7 @@ test('should ignore reviews from before the stopDate', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('1999-01-01'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1300,7 +1317,7 @@ test('should ignore reviews from before the stopDate', async () => {
     },
   ]);
 
-  fetcher.listReviews.mockResolvedValueOnce([
+  loose(fetcher.listReviews).mockResolvedValueOnce([
     {
       submitted_at: new Date('1999-01-01'),
       pull_request_url: 'https://github.com/contributions-test/foo/pulls/1',
@@ -1329,7 +1346,7 @@ test('should ignore reviews not matching filter', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/not-matching-filter/foo',
@@ -1342,7 +1359,7 @@ test('should ignore reviews not matching filter', async () => {
     },
   ]);
 
-  fetcher.listReviews.mockResolvedValueOnce([
+  loose(fetcher.listReviews).mockResolvedValueOnce([
     {
       submitted_at: new Date('2022-03-01'),
       pull_request_url: 'https://github.com/not-matching-filter/foo/pulls/1',
@@ -1367,7 +1384,7 @@ test('should ignore reviews not by user', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1380,7 +1397,7 @@ test('should ignore reviews not by user', async () => {
     },
   ]);
 
-  fetcher.listReviews.mockResolvedValueOnce([
+  loose(fetcher.listReviews).mockResolvedValueOnce([
     {
       submitted_at: new Date('2022-03-01'),
       pull_request_url: 'https://github.com/contribution-test/foo/pulls/1',
@@ -1427,7 +1444,7 @@ test('should fetch comments until stop date', async () => {
 
   // We want to fetch 2 pages for the first period, and one page for the subsequent periods.
   // We expect 3 periods to be queried based on the passed stopDate and the faked clock.
-  fetcher.searchIssues
+  loose(fetcher.searchIssues)
     .mockResolvedValueOnce(
       new Array(100).fill(0).map(() => ({
         createdAt: new Date('2022-03-01'),
@@ -1461,7 +1478,7 @@ test('should fetch comments until stop date', async () => {
       }))
     );
 
-  fetcher.listComments.mockResolvedValue([
+  loose(fetcher.listComments).mockResolvedValue([
     {
       createdAt: new Date('2022-03-01'),
       user: {
@@ -1482,7 +1499,7 @@ test('should fetch comments until stop date', async () => {
     ['2022-01-01..2022-01-31', 'pull-request', 1],
   ];
   expectedCalls.forEach(([range, type, page], index) => {
-    expect(fetcher.searchIssues.mock.calls[index][0]).toStrictEqual({
+    expect(loose(fetcher.searchIssues).mock.calls[index]?.[0]).toStrictEqual({
       q: `commenter:${config.github.username}+updated:${range}+is:${type}`,
       sort: 'created',
       page,
@@ -1490,7 +1507,7 @@ test('should fetch comments until stop date', async () => {
   });
   expect(fetcher.searchIssues).toHaveBeenCalledTimes(7);
   expect(fetcher.listComments).toHaveBeenCalledTimes(111);
-  expect(fetcher.listComments.mock.calls[0][0]).toStrictEqual({
+  expect(loose(fetcher.listComments).mock.calls[0]?.[0]).toStrictEqual({
     owner: 'contribution-test',
     repo: 'foo',
     issue_number: 1111,
@@ -1512,7 +1529,7 @@ test('should only search issues and PRs updated since the latest stored comment 
   ];
   // An issue created long before the latest stored comment, but commented on
   // since then.
-  fetcher.searchIssues.mockImplementation(async ({ q }) =>
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) =>
     q.startsWith('commenter:') &&
     q.includes('2022-03-01') &&
     q.endsWith('is:issue')
@@ -1528,7 +1545,7 @@ test('should only search issues and PRs updated since the latest stored comment 
         ]
       : []
   );
-  fetcher.listComments.mockResolvedValue([
+  loose(fetcher.listComments).mockResolvedValue([
     {
       created_at: new Date('2022-03-01T10:00:00Z'),
       user: { login: config.github.username },
@@ -1547,7 +1564,9 @@ test('should only search issues and PRs updated since the latest stored comment 
 
   const result = await gather(commitConfig, existingContributions);
 
-  const queries = fetcher.searchIssues.mock.calls.map(([args]) => args.q);
+  const queries = loose(fetcher.searchIssues).mock.calls.map(
+    ([args]) => args.q
+  );
   expect(queries).toStrictEqual([
     `reviewed-by:${config.github.username}+updated:2022-03-01..2022-03-31+is:pull-request`,
     `reviewed-by:${config.github.username}+updated:2022-02-01..2022-02-28+is:pull-request`,
@@ -1591,7 +1610,7 @@ test('should format comments', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1602,7 +1621,7 @@ test('should format comments', async () => {
     },
   ]);
 
-  fetcher.listComments.mockResolvedValueOnce([
+  loose(fetcher.listComments).mockResolvedValueOnce([
     {
       created_at: new Date('2022-03-02'),
       issue_url:
@@ -1638,7 +1657,7 @@ test('should format PR comments', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1650,7 +1669,7 @@ test('should format PR comments', async () => {
     },
   ]);
 
-  fetcher.listComments.mockResolvedValueOnce([
+  loose(fetcher.listComments).mockResolvedValueOnce([
     {
       created_at: new Date('2022-03-02'),
       issue_url:
@@ -1690,7 +1709,7 @@ test('should custom format comments', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1701,7 +1720,7 @@ test('should custom format comments', async () => {
     },
   ]);
 
-  fetcher.listComments.mockResolvedValueOnce([
+  loose(fetcher.listComments).mockResolvedValueOnce([
     {
       created_at: new Date('2022-03-02'),
       issue_url:
@@ -1714,8 +1733,7 @@ test('should custom format comments', async () => {
   ]);
 
   const result = await gather(commitConfig);
-  expect(result.length).toBe(1);
-  expect(result[0].type).toBe('COMMENTED!');
+  expect(result).toMatchObject([{ type: 'COMMENTED!' }]);
 });
 
 test('should ignore comments from before stopDate', async () => {
@@ -1730,7 +1748,7 @@ test('should ignore comments from before stopDate', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1741,7 +1759,7 @@ test('should ignore comments from before stopDate', async () => {
     },
   ]);
 
-  fetcher.listComments.mockResolvedValueOnce([
+  loose(fetcher.listComments).mockResolvedValueOnce([
     {
       created_at: new Date('1999-01-01'),
       issue_url:
@@ -1770,7 +1788,7 @@ test('should ignore comments not matching filter', async () => {
     },
   };
 
-  fetcher.searchIssues.mockResolvedValueOnce([
+  loose(fetcher.searchIssues).mockResolvedValueOnce([
     {
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/not-matching-filter/foo',
@@ -1791,7 +1809,7 @@ test('should ignore comments not matching filter', async () => {
 
   // While this is the first call, it will be the call for the second issue
   // as we filter out the first issue from above due to not matching,.
-  fetcher.listComments.mockResolvedValueOnce([
+  loose(fetcher.listComments).mockResolvedValueOnce([
     {
       created_at: new Date('2022-03-02'),
       issue_url:
@@ -1811,16 +1829,18 @@ test('should ignore comments not matching filter', async () => {
   expect(fetcher.listComments).toHaveBeenCalledOnce();
 });
 
-function getRequestError(status, message) {
-  const error = new Error(`Request failed with status ${status}`);
-  error.status = status;
-  if (message) {
-    error.response = { data: { message } };
-  }
+function getRequestError(status: number, message?: string) {
+  const error = Object.assign(
+    new Error(`Request failed with status ${status}`),
+    {
+      status,
+      response: message ? { data: { message } } : undefined,
+    }
+  );
   return error;
 }
 
-function getDetailsConfig(type) {
+function getDetailsConfig(type: string) {
   return {
     github: {
       ...config.github,
@@ -1834,8 +1854,8 @@ function getDetailsConfig(type) {
   };
 }
 
-function mockTwoItems(type) {
-  fetcher.searchIssues.mockResolvedValueOnce(
+function mockTwoItems(type: string) {
+  loose(fetcher.searchIssues).mockResolvedValueOnce(
     [1111, 2222].map((number) => ({
       createdAt: new Date('2022-03-02'),
       repository_url: 'https://api.github.com/repos/contribution-test/foo',
@@ -1871,30 +1891,29 @@ function mockTwoItems(type) {
 for (const [type, fetcherName] of [
   ['reviews', 'listReviews'],
   ['comments', 'listComments'],
-]) {
+] as const) {
   for (const [status, message] of [
     [404],
     [410],
     [451, 'Repository access blocked'],
     [403, 'Repository access blocked'],
-  ]) {
+  ] as [number, string?][]) {
     test(`should skip unavailable items (${status}) and continue fetching ${type}`, async () => {
       const entry = mockTwoItems(type);
-      fetcher[fetcherName]
+      loose(fetcher[fetcherName])
         .mockRejectedValueOnce(getRequestError(status, message))
         .mockResolvedValueOnce([entry]);
 
       const result = await gather(getDetailsConfig(type));
 
       expect(fetcher[fetcherName]).toHaveBeenCalledTimes(2);
-      expect(result.length).toBe(1);
-      expect(result[0].link).toBe(entry.html_url);
+      expect(result).toMatchObject([{ link: entry.html_url }]);
     });
   }
 
   test(`should abort when fetching ${type} hits a rate limit`, async () => {
     const entry = mockTwoItems(type);
-    fetcher[fetcherName]
+    loose(fetcher[fetcherName])
       .mockRejectedValueOnce(
         getRequestError(403, 'API rate limit exceeded for user ID 1.')
       )
@@ -1908,7 +1927,7 @@ for (const [type, fetcherName] of [
 
   test(`should abort when fetching ${type} fails for other reasons`, async () => {
     const entry = mockTwoItems(type);
-    fetcher[fetcherName]
+    loose(fetcher[fetcherName])
       .mockRejectedValueOnce(getRequestError(403))
       .mockResolvedValueOnce([entry]);
 
@@ -1922,9 +1941,9 @@ for (const [type, fetcherName] of [
 for (const [type, fetcherName, overrides] of [
   ['commits', 'searchCommits', { issuesEnabled: false }],
   ['issues', 'searchIssues', { commitsEnabled: false }],
-]) {
+] as const) {
   test(`should abort when searching ${type} fails`, async () => {
-    fetcher[fetcherName].mockRejectedValueOnce(getRequestError(403));
+    loose(fetcher[fetcherName]).mockRejectedValueOnce(getRequestError(403));
 
     await expect(
       gather({
@@ -1940,7 +1959,7 @@ for (const [type, fetcherName, overrides] of [
   });
 }
 
-function commitOn(date, sha = '1') {
+function commitOn(date: string, sha = '1') {
   return {
     commit: { author: { date }, message: 'message' },
     repository: { owner: { login: 'owner' }, name: 'repo' },
@@ -1959,7 +1978,7 @@ test('should split the period if the search limit is reached', async () => {
     },
   };
   const fullPage = new Array(100).fill(0).map(() => commitOn('2022-03-10'));
-  fetcher.searchCommits.mockImplementation(async ({ q, page }) => {
+  loose(fetcher.searchCommits).mockImplementation(async ({ q, page }) => {
     if (q.endsWith('2022-03-01..2022-03-31')) {
       return fullPage;
     }
@@ -1969,7 +1988,9 @@ test('should split the period if the search limit is reached', async () => {
 
   const result = await gather(commitConfig);
 
-  const queries = fetcher.searchCommits.mock.calls.map(([args]) => args.q);
+  const queries = loose(fetcher.searchCommits).mock.calls.map(
+    ([args]) => args.q
+  );
   expect(queries.slice(10)).toStrictEqual([
     `author:${config.github.username}+author-date:2022-03-16..2022-03-31`,
     `author:${config.github.username}+author-date:2022-03-01..2022-03-15`,
@@ -1992,7 +2013,7 @@ test('should throw if a single day exceeds the search limit', async () => {
     },
   };
   const fullPage = new Array(100).fill(0).map(() => commitOn('2022-03-10'));
-  fetcher.searchCommits.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchCommits).mockImplementation(async ({ q }) => {
     const [after, before] = q.split(':').pop().split('..');
     return after <= '2022-03-10' && before >= '2022-03-10' ? fullPage : [];
   });
@@ -2016,14 +2037,14 @@ test('should not stop paginating issues if filtered items make a page short', as
     html_url: 'https://github.com/owner/repo/issues/1',
     repository: { fork: true },
   };
-  fetcher.searchIssues
+  loose(fetcher.searchIssues)
     .mockResolvedValueOnce(new Array(100).fill(forkIssue))
     .mockResolvedValueOnce([]);
 
   await gather(issueConfig);
 
-  const issuePages = fetcher.searchIssues.mock.calls
-    .filter(([args]) => args.q.endsWith('+is:issue'))
+  const issuePages = loose(fetcher.searchIssues)
+    .mock.calls.filter(([args]) => args.q.endsWith('+is:issue'))
     .map(([args]) => args.page);
   expect(issuePages).toStrictEqual([1, 2]);
 });
@@ -2038,13 +2059,13 @@ const privateConfig = {
   },
 };
 
-function mockRepositories(privateRepos) {
-  fetcher.getRepository.mockImplementation(async ({ owner, repo }) => ({
+function mockRepositories(privateRepos: string[]) {
+  loose(fetcher.getRepository).mockImplementation(async ({ owner, repo }) => ({
     private: privateRepos.includes(`${owner}/${repo}`),
   }));
 }
 
-function searchResult(repo, number, extra = {}) {
+function searchResult(repo: string, number: number, extra = {}) {
   return {
     created_at: new Date('2022-03-02'),
     repository_url: `https://api.github.com/repos/contribution-test/${repo}`,
@@ -2058,7 +2079,7 @@ function searchResult(repo, number, extra = {}) {
 
 test('should hide private issues when allowPrivate is set', async () => {
   mockRepositories(['contribution-test/secret']);
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('is:issue')) {
       return [
         searchResult('public', 1),
@@ -2107,7 +2128,7 @@ test('should hide private issues when allowPrivate is set', async () => {
 
 test('should hide private PRs with custom label', async () => {
   mockRepositories(['contribution-test/secret']);
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('is:pull-request')) {
       return [searchResult('secret', 1, { pull_request: {} })];
     }
@@ -2137,7 +2158,7 @@ test('should hide private PRs with custom label', async () => {
 
 test('should hide private reviews and comments when allowPrivate is set', async () => {
   mockRepositories(['contribution-test/secret']);
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('reviewed-by:')) {
       return [
         searchResult('secret', 1, {
@@ -2154,7 +2175,7 @@ test('should hide private reviews and comments when allowPrivate is set', async 
 
     return [];
   });
-  fetcher.listReviews.mockResolvedValue([
+  loose(fetcher.listReviews).mockResolvedValue([
     {
       submitted_at: new Date('2022-03-02'),
       pull_request_url:
@@ -2165,7 +2186,7 @@ test('should hide private reviews and comments when allowPrivate is set', async 
       user: { login: config.github.username },
     },
   ]);
-  fetcher.listComments.mockResolvedValue([
+  loose(fetcher.listComments).mockResolvedValue([
     {
       created_at: new Date('2022-03-02'),
       issue_url:
@@ -2200,7 +2221,7 @@ test('should hide private reviews and comments when allowPrivate is set', async 
 });
 
 test('should not look up repository visibility without allowPrivate', async () => {
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('is:issue')) {
       return [searchResult('public', 1)];
     }
@@ -2212,16 +2233,15 @@ test('should not look up repository visibility without allowPrivate', async () =
     github: { ...privateConfig.github, allowPrivate: false },
   });
 
-  expect(result.length).toBe(1);
-  expect(result[0].description).toBe('Title public 1');
+  expect(result).toMatchObject([{ description: 'Title public 1' }]);
   expect(fetcher.getRepository).not.toHaveBeenCalled();
 });
 
 test('should treat an unavailable repository as private', async () => {
-  fetcher.getRepository.mockRejectedValue(
+  loose(fetcher.getRepository).mockRejectedValue(
     Object.assign(new Error('Not Found'), { status: 404 })
   );
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('is:issue')) {
       return [searchResult('gone', 1)];
     }
@@ -2233,16 +2253,16 @@ test('should treat an unavailable repository as private', async () => {
     github: { ...privateConfig.github, reviewsEnabled: false },
   });
 
-  expect(result.length).toBe(1);
-  expect(result[0].description).toBe('Contribution in private repository');
-  expect(result[0].link).toBe('');
+  expect(result).toMatchObject([
+    { description: 'Contribution in private repository', link: '' },
+  ]);
 });
 
 test('should abort if the repository visibility lookup fails', async () => {
-  fetcher.getRepository.mockRejectedValue(
+  loose(fetcher.getRepository).mockRejectedValue(
     Object.assign(new Error('rate limited'), { status: 403 })
   );
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('is:issue')) {
       return [searchResult('public', 1)];
     }
@@ -2262,7 +2282,12 @@ const backfillConfig = {
   },
 };
 
-function issueResult(repo, number, createdAt, extra = {}) {
+function issueResult(
+  repo: string,
+  number: number,
+  createdAt: string,
+  extra = {}
+) {
   return {
     created_at: new Date(createdAt),
     repository_url: `https://api.github.com/repos/contribution-test/${repo}`,
@@ -2315,7 +2340,7 @@ test('backfill should search yearly periods limited to the qualifier', async () 
     startDate: '2020-06-01',
   });
 
-  const commitQueries = fetcher.searchCommits.mock.calls.map(
+  const commitQueries = loose(fetcher.searchCommits).mock.calls.map(
     ([args]) => args.q
   );
   expect(commitQueries).toStrictEqual([
@@ -2323,7 +2348,9 @@ test('backfill should search yearly periods limited to the qualifier', async () 
     'author:user+org:contribution-test+author-date:2020-06-01..2021-03-02',
   ]);
 
-  const issueQueries = fetcher.searchIssues.mock.calls.map(([args]) => args.q);
+  const issueQueries = loose(fetcher.searchIssues).mock.calls.map(
+    ([args]) => args.q
+  );
   expect(issueQueries).toStrictEqual([
     'author:user+org:contribution-test+created:2021-03-03..2022-03-02+is:issue',
     'author:user+org:contribution-test+created:2020-06-01..2021-03-02+is:issue',
@@ -2348,7 +2375,7 @@ test('backfill should default to the stop date and search each qualifier', async
     }
   );
 
-  const commitQueries = fetcher.searchCommits.mock.calls.map(
+  const commitQueries = loose(fetcher.searchCommits).mock.calls.map(
     ([args]) => args.q
   );
   expect(commitQueries).toStrictEqual([
@@ -2376,7 +2403,9 @@ test('backfill should only search created dates up to the end date', async () =>
   );
 
   // Reviews are found by the update date of their PR, which can be later
-  const queries = fetcher.searchIssues.mock.calls.map(([args]) => args.q);
+  const queries = loose(fetcher.searchIssues).mock.calls.map(
+    ([args]) => args.q
+  );
   expect(queries).toStrictEqual([
     'reviewed-by:user+repo:contribution-test/foo+updated:2021-03-03..2022-03-02+is:pull-request',
     'reviewed-by:user+repo:contribution-test/foo+updated:2021-01-01..2021-03-02+is:pull-request',
@@ -2384,7 +2413,7 @@ test('backfill should only search created dates up to the end date', async () =>
 });
 
 test('backfill should skip stored, out of range and duplicate contributions', async () => {
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('+is:issue')) {
       return [
         issueResult('foo', 1, '2021-02-01'),
@@ -2434,7 +2463,7 @@ test('backfill should skip stored, out of range and duplicate contributions', as
 });
 
 test('backfill should include contributions on the end date', async () => {
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('+is:issue')) {
       return [issueResult('foo', 1, '2021-06-30T23:59:59Z')];
     }
@@ -2462,7 +2491,7 @@ test('backfill should include contributions on the end date', async () => {
 });
 
 test('backfill should still apply the filter', async () => {
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('+is:issue')) {
       return [
         issueResult('foo', 1, '2021-02-01'),
@@ -2494,7 +2523,7 @@ test('backfill should still apply the filter', async () => {
 });
 
 test('backfill should skip stored commits', async () => {
-  fetcher.searchCommits.mockResolvedValueOnce([
+  loose(fetcher.searchCommits).mockResolvedValueOnce([
     createCommit('stored', '2022-02-01'),
     createCommit('new', '2022-01-15'),
   ]);
@@ -2524,7 +2553,7 @@ test('backfill should skip stored commits', async () => {
 });
 
 test('backfill should only keep reviews within the backfilled range', async () => {
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('reviewed-by:') && q.includes('2021-03-03..2022-03-02')) {
       return [
         issueResult('foo', 1, '2020-01-01', {
@@ -2537,7 +2566,7 @@ test('backfill should only keep reviews within the backfilled range', async () =
 
     return [];
   });
-  const review = (id, submittedAt) => ({
+  const review = (id: number, submittedAt: string) => ({
     submitted_at: submittedAt,
     state: 'APPROVED',
     html_url: `https://github.com/contribution-test/foo/pull/1#pullrequestreview-${id}`,
@@ -2545,7 +2574,7 @@ test('backfill should only keep reviews within the backfilled range', async () =
       'https://api.github.com/repos/contribution-test/foo/pulls/1',
     user: { login: 'user' },
   });
-  fetcher.listReviews.mockResolvedValueOnce([
+  loose(fetcher.listReviews).mockResolvedValueOnce([
     review(1, '2021-05-01T00:00:00Z'),
     // Newer than the end date, the next regular run handles it
     review(2, '2022-01-15T00:00:00Z'),
@@ -2570,11 +2599,11 @@ test('backfill should only keep reviews within the backfilled range', async () =
   expect(result.map(({ link }) => link)).toStrictEqual([
     'https://github.com/contribution-test/foo/pull/1#pullrequestreview-1',
   ]);
-  expect(result[0].description).toBe('Title 1');
+  expect(result[0]?.description).toBe('Title 1');
 });
 
 test('backfill should not add contributions newer than the stored ones', async () => {
-  fetcher.searchIssues.mockImplementation(async ({ q }) => {
+  loose(fetcher.searchIssues).mockImplementation(async ({ q }) => {
     if (q.startsWith('author:') && q.endsWith('+is:issue')) {
       return [
         issueResult('foo', 1, '2021-02-01'),

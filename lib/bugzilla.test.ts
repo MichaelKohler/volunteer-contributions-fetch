@@ -2,6 +2,7 @@ import { setTimeout as sleep } from 'timers/promises';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { gather, bugzillaSchema } from './bugzilla.js';
+import { mockedFetch } from './test-helpers.js';
 
 vi.mock('timers/promises', () => ({ setTimeout: vi.fn() }));
 
@@ -10,7 +11,7 @@ const config = {
     enabled: true,
     baseUrl: 'https://bugzilla.mozilla.org',
     username: 'user',
-    stopDate: new Date('2021-11-01'),
+    stopDate: '2021-11-01',
     delayMsPerRequest: 1234,
   },
 };
@@ -169,7 +170,7 @@ test('should use configured baseUrl for links', async () => {
 
   const contributions = await gather(customConfig);
 
-  expect(contributions[0].link).toBe(
+  expect(contributions[0]?.link).toBe(
     'https://bugzilla.example.com/show_bug.cgi?id=1#c0'
   );
 });
@@ -184,7 +185,9 @@ test('should encode username in search query', async () => {
 
   await gather(plusConfig);
 
-  expect(fetch.mock.calls[0][0]).toContain('commenter:me%2Bbmo%40x.org&');
+  expect(mockedFetch().mock.calls[0]?.[0]).toContain(
+    'commenter:me%2Bbmo%40x.org&'
+  );
 });
 
 test('should use the same stop date in time zones behind UTC', async () => {
@@ -194,7 +197,9 @@ test('should use the same stop date in time zones behind UTC', async () => {
   try {
     await gather(config);
 
-    expect(fetch.mock.calls[0][0]).toContain('last_change_time=2021-11-01');
+    expect(mockedFetch().mock.calls[0]?.[0]).toContain(
+      'last_change_time=2021-11-01'
+    );
   } finally {
     process.env.TZ = originalTZ;
   }
@@ -213,10 +218,10 @@ test('should format with custom types', async () => {
 
   const contributions = await gather(specificTypeConfig);
 
-  expect(contributions[0].type).toBe(
+  expect(contributions[0]?.type).toBe(
     specificTypeConfig.bugzilla.types.createdType
   );
-  expect(contributions[1].type).toBe(
+  expect(contributions[1]?.type).toBe(
     specificTypeConfig.bugzilla.types.commentedType
   );
 });
@@ -270,8 +275,8 @@ test('should ignore comments older than stopDate', async () => {
 });
 
 test('should throw if fetching bugs fails', async () => {
-  fetch.mockReset();
-  fetch.mockResolvedValueOnce({ ok: false, status: 500 });
+  mockedFetch().mockReset();
+  mockedFetch().mockResolvedValueOnce({ ok: false, status: 500 });
 
   await expect(gather(config)).rejects.toThrow(
     /Bugzilla request to https:\/\/bugzilla\.mozilla\.org\/rest\/bug\?.* failed with status 500/
@@ -282,8 +287,8 @@ test('should throw if fetching comments fails', async () => {
   const bugsPage = {
     bugs: [{ created_at: new Date('2022-04-13'), summary: 'Summary', id: 1 }],
   };
-  fetch.mockReset();
-  fetch
+  mockedFetch().mockReset();
+  mockedFetch()
     .mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValue(bugsPage),
@@ -315,8 +320,8 @@ test('should not wait when delayMsPerRequest is 0', async () => {
 test('should sort bugs by ID so that paging is stable', async () => {
   await gather(config);
 
-  expect(fetch.mock.calls[0][0]).toContain('&order=bug_id&');
-  expect(fetch.mock.calls[1][0]).toContain('&order=bug_id&');
+  expect(mockedFetch().mock.calls[0]?.[0]).toContain('&order=bug_id&');
+  expect(mockedFetch().mock.calls[1]?.[0]).toContain('&order=bug_id&');
 });
 
 test.each([
@@ -345,8 +350,8 @@ test.each([
         },
       },
     };
-    fetch.mockReset();
-    fetch
+    mockedFetch().mockReset();
+    mockedFetch()
       .mockResolvedValueOnce({
         ok: true,
         json: vi.fn().mockResolvedValue(bugsPage),
@@ -363,10 +368,9 @@ test.each([
 
     const contributions = await gather(config);
 
-    expect(contributions.length).toBe(1);
-    expect(contributions[0].link).toBe(
-      'https://bugzilla.mozilla.org/show_bug.cgi?id=2#c0'
-    );
+    expect(contributions).toMatchObject([
+      { link: 'https://bugzilla.mozilla.org/show_bug.cgi?id=2#c0' },
+    ]);
   }
 );
 
@@ -374,8 +378,8 @@ test('should throw on an unauthorized response that is not about the bug', async
   const bugsPage = {
     bugs: [{ created_at: new Date('2022-04-13'), summary: 'Summary', id: 1 }],
   };
-  fetch.mockReset();
-  fetch
+  mockedFetch().mockReset();
+  mockedFetch()
     .mockResolvedValueOnce({
       ok: true,
       json: vi.fn().mockResolvedValue(bugsPage),

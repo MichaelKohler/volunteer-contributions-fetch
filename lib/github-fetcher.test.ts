@@ -9,8 +9,10 @@ import {
   throwIfTokenHasPrivateRepoScope,
 } from './github-fetcher.js';
 
-function jsonResponse(body, link) {
-  const headers = { 'content-type': 'application/json' };
+function jsonResponse(body: unknown, link?: string) {
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+  };
   if (link) {
     headers.link = link;
   }
@@ -18,9 +20,9 @@ function jsonResponse(body, link) {
   return new Response(JSON.stringify(body), { status: 200, headers });
 }
 
-function mockTwoPages(path) {
+function mockTwoPages(path: string) {
   const base = `https://api.github.com/repos/owner/repo/${path}`;
-  const fetchMock = vi.fn(async (url) => {
+  const fetchMock = vi.fn<typeof fetch>(async (url) => {
     if (String(url).includes('page=2')) {
       return jsonResponse([{ id: 3 }]);
     }
@@ -55,7 +57,7 @@ test('listReviews follows pagination', async () => {
 
   expect(reviews).toStrictEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
   expect(fetchMock).toHaveBeenCalledTimes(2);
-  expect(String(fetchMock.mock.calls[0][0])).toContain('per_page=100');
+  expect(String(fetchMock.mock.calls[0]?.[0])).toContain('per_page=100');
 });
 
 test('listComments follows pagination', async () => {
@@ -69,11 +71,13 @@ test('listComments follows pagination', async () => {
 
   expect(comments).toStrictEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
   expect(fetchMock).toHaveBeenCalledTimes(2);
-  expect(String(fetchMock.mock.calls[0][0])).toContain('per_page=100');
+  expect(String(fetchMock.mock.calls[0]?.[0])).toContain('per_page=100');
 });
 
-function mockScopesHeader(scopes) {
-  const headers = { 'content-type': 'application/json' };
+function mockScopesHeader(scopes: string | undefined) {
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+  };
   if (scopes !== undefined) {
     headers['x-oauth-scopes'] = scopes;
   }
@@ -113,13 +117,15 @@ test('throwIfTokenHasPrivateRepoScope rejects a token without scopes header', as
 });
 
 test('getRepository returns the repository data', async () => {
-  const fetchMock = vi.fn(async () => jsonResponse({ private: true }));
+  const fetchMock = vi.fn<typeof fetch>(async () =>
+    jsonResponse({ private: true })
+  );
   vi.stubGlobal('fetch', fetchMock);
 
   const repository = await getRepository({ owner: 'owner', repo: 'repo' });
 
   expect(repository).toStrictEqual({ private: true });
-  expect(String(fetchMock.mock.calls[0][0])).toBe(
+  expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
     'https://api.github.com/repos/owner/repo'
   );
 });

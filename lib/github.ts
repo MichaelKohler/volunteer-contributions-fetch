@@ -2,6 +2,10 @@ import Debug from 'debug';
 import { setTimeout as sleep } from 'timers/promises';
 import { z } from 'zod';
 import {
+  type CommitSearchItem,
+  type IssueComment,
+  type IssueSearchItem,
+  type Review,
   getRepository,
   listComments,
   listReviews,
@@ -20,6 +24,7 @@ import {
   stopDateSchema,
 } from './utils.js';
 import { tagRuleSchema } from './tags.js';
+import type { Contribution, FetchedContribution } from './types.js';
 
 const debug = Debug('contributions:github');
 
@@ -97,7 +102,32 @@ export const githubSchema = sourceSchema(
     )
 );
 
-export async function gather({ github }, existingContributions = []) {
+export type GitHubConfig = z.output<typeof githubSchema>;
+export type EnabledGitHubConfig = Extract<GitHubConfig, { enabled: true }>;
+type GitHubTypes = EnabledGitHubConfig['types'];
+
+// The config of the GitHub source, extended with what is needed during a run.
+interface Context extends EnabledGitHubConfig {
+  // Limits the search to some organizations or repositories, see backfill.
+  searchQualifier: string;
+  isPrivateRepo: (fullName: string) => Promise<boolean>;
+}
+
+// An inclusive period of [before, after] dates in the form YYYY-MM-DD.
+type Period = [before: string, after: string];
+
+interface SearchOptions {
+  getPeriods: () => AsyncIterable<Period> | Iterable<Period>;
+  isWanted: (contribution: FetchedContribution) => boolean;
+}
+
+type IssueOrComment = IssueSearchItem | Review | IssueComment;
+type GitHubEntity = CommitSearchItem | IssueOrComment;
+
+export async function gather(
+  { github }: { github?: GitHubConfig },
+  existingContributions: Contribution[] = []
+): Promise<FetchedContribution[]> {
   if (!github?.enabled) {
     debug('GitHub source not enabled, skipping');
     return [];
@@ -106,11 +136,12 @@ export async function gather({ github }, existingContributions = []) {
   const existingCommits = existingContributions.filter(
     (contribution) => contribution.source === GITHUB_COMMIT_CATEGORY
   );
-  const latestCreationDate = (category) =>
+  const latestCreationDate = (category: string) =>
     getLatestCreationDate(existingContributions, category, github.stopDate);
-  const newerThan = (date) => (contribution) =>
+  const newerThan = (date: Date) => (contribution: FetchedContribution) =>
     new Date(contribution.createdAt) > date;
-  const searchSince = (date) => () => periodGenerator(github.stopDate, date);
+  const searchSince = (date: Date) => () =>
+    periodGenerator(github.stopDate, date);
 
   const context = await createContext(github);
 
@@ -122,7 +153,7 @@ export async function gather({ github }, existingContributions = []) {
   const latestCommit = latestCreationDate(GITHUB_COMMIT_CATEGORY);
   const storedCommitKeys = new Set(existingCommits.map(getCommitKey));
   const commits = await processCommits(context, {
-    getPeriods: searchSince(new Date(latestCommit - ONE_YEAR_IN_MS)),
+    getPeriods: searchSince(new Date(latestCommit.getTime() - ONE_YEAR_IN_MS)),
     isWanted: (commit) =>
       new Date(commit.createdAt) > new Date(github.stopDate) &&
       !storedCommitKeys.has(getCommitKey(commit)),
@@ -159,7 +190,11 @@ export async function gather({ github }, existingContributions = []) {
 // Returns the creation date of the newest stored contribution of `category`,
 // or the stop date if there is none. Regular runs only fetch contributions
 // newer than this.
-function getLatestCreationDate(existingContributions, category, stopDate) {
+function getLatestCreationDate(
+  existingContributions: Contribution[],
+  category: string,
+  stopDate: string
+): Date {
   const latest = findLatest(
     existingContributions,
     (contribution) => contribution.source === category
@@ -180,6 +215,7 @@ const repoSchema = z.string().refine(
     const [owner, name, ...rest] = value.split('/');
     return (
       rest.length === 0 &&
+      owner !== undefined &&
       OWNER_NAME.test(owner) &&
       name !== undefined &&
       REPO_NAME.test(name)
@@ -212,12 +248,18 @@ export const backfillOptionsSchema = z
     { message: 'startDate must not be after endDate' }
   );
 
+export type BackfillOptions = z.input<typeof backfillOptionsSchema>;
+
 // Fetches the contributions of the given organizations, users or repositories
 // between `startDate` (defaults to the stop date) and `endDate` (defaults to
 // now). This is meant to be run once after adding a new pattern to `filter`,
 // as regular runs only fetch contributions newer than the stored ones.
 // Results still have to match `filter`, and stored contributions are skipped.
-export async function backfill({ github }, rawOptions, existingContributions) {
+export async function backfill(
+  { github }: { github?: GitHubConfig },
+  rawOptions: BackfillOptions,
+  existingContributions: Contribution[]
+): Promise<FetchedContribution[]> {
   if (!github?.enabled) {
     throw new Error('The GitHub source must be enabled to backfill it.');
   }
@@ -245,14 +287,15 @@ export async function backfill({ github }, rawOptions, existingContributions) {
     ])
   );
   const storedKeys = new Set(existingContributions.map(getBackfillKey));
-  const isWanted = (contribution) => {
+  const isWanted = (contribution: FetchedContribution) => {
     const createdAt = new Date(contribution.createdAt);
     const key = getBackfillKey(contribution);
     if (createdAt < startDate || createdAt >= endOfEndDate) {
       return false;
     }
 
-    if (createdAt > latestStored.get(contribution.source)) {
+    const latest = latestStored.get(contribution.source);
+    if (latest && createdAt > latest) {
       return false;
     }
 
@@ -272,7 +315,7 @@ export async function backfill({ github }, rawOptions, existingContributions) {
   const createdPeriods = () => backfillPeriodGenerator(startDate, endDate);
   const updatedPeriods = () => backfillPeriodGenerator(startDate, new Date());
 
-  const contributions = [];
+  const contributions: FetchedContribution[] = [];
   for (const qualifier of qualifiers) {
     debug(`Backfilling ${qualifier}`);
     const qualifiedContext = { ...context, searchQualifier: qualifier };
@@ -307,7 +350,7 @@ export async function backfill({ github }, rawOptions, existingContributions) {
 // Titles of issues and PRs can change, so they are not part of the key. The
 // link identifies a contribution, apart from commits (see getCommitKey) and
 // private contributions, which have no link.
-function getBackfillKey(contribution) {
+function getBackfillKey(contribution: Contribution): string {
   if (contribution.source === GITHUB_COMMIT_CATEGORY) {
     return `${contribution.source}|${getCommitKey(contribution)}`;
   }
@@ -319,7 +362,7 @@ function getBackfillKey(contribution) {
   return `${contribution.source}|${new Date(contribution.createdAt).getTime()}`;
 }
 
-function startOfNextUTCDay(date) {
+function startOfNextUTCDay(date: Date): Date {
   const next = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
   );
@@ -327,11 +370,11 @@ function startOfNextUTCDay(date) {
   return next;
 }
 
-async function createContext(github) {
+async function createContext(github: EnabledGitHubConfig): Promise<Context> {
   try {
     await throwIfTokenHasPrivateRepoScope();
   } catch (error) {
-    if (error.message === PRIVATE_SCOPE_ERROR) {
+    if (error instanceof Error && error.message === PRIVATE_SCOPE_ERROR) {
       if (!github.allowPrivate) {
         throw new Error(
           'GITHUB_TOKEN might have private repo scope, but the config does not specify `allowPrivate` to fetch private repos. Are you sure you want to fetch private information? This might also be because you passed a fine-grained token. In that case we can not check the permissions it has and we assume it is private. You can double check the permissions and if you are sure it is correct, you may set `allowPrivate` to true.',
@@ -352,7 +395,10 @@ async function createContext(github) {
 
 // Each process function searches the periods returned by `getPeriods` and
 // returns the contributions for which `isWanted` returns true.
-async function processIssues(github, { getPeriods, isWanted }) {
+async function processIssues(
+  github: Context,
+  { getPeriods, isWanted }: SearchOptions
+): Promise<FetchedContribution[]> {
   if (!github.issuesEnabled) {
     debug('Fetching issues is disabled, skipping!');
     return [];
@@ -360,16 +406,19 @@ async function processIssues(github, { getPeriods, isWanted }) {
 
   debug('Getting issues from Github');
   const allIssues = await searchAllPeriods(
-    github,
     getPeriods(),
     (period, page) => getIssuePage(github, 'author', period, page),
-    'issues'
+    'issues',
+    (results) => processEntities(github, results)
   );
 
   return allIssues.filter(isWanted);
 }
 
-async function processPRs(github, { getPeriods, isWanted }) {
+async function processPRs(
+  github: Context,
+  { getPeriods, isWanted }: SearchOptions
+): Promise<FetchedContribution[]> {
   if (!github.issuesEnabled) {
     debug('Fetching PRs is disabled through `issuesEnabled`, skipping!');
     return [];
@@ -377,16 +426,19 @@ async function processPRs(github, { getPeriods, isWanted }) {
 
   debug('Getting PRs from Github');
   const allPRs = await searchAllPeriods(
-    github,
     getPeriods(),
     (period, page) => getPRPage(github, 'author', period, page),
-    'PRs'
+    'PRs',
+    (results) => processEntities(github, results)
   );
 
   return allPRs.filter(isWanted);
 }
 
-async function processCommits(github, { getPeriods, isWanted }) {
+async function processCommits(
+  github: Context,
+  { getPeriods, isWanted }: SearchOptions
+): Promise<FetchedContribution[]> {
   if (!github.commitsEnabled) {
     debug('Fetching commits is disabled, skipping!');
     return [];
@@ -394,10 +446,10 @@ async function processCommits(github, { getPeriods, isWanted }) {
 
   debug('Getting commits from Github');
   const allCommits = await searchAllPeriods(
-    github,
     getPeriods(),
     (period, page) => getCommitPage(github, period, page),
-    'commits'
+    'commits',
+    (results) => processEntities(github, results)
   );
 
   return allCommits.filter(isWanted);
@@ -406,15 +458,18 @@ async function processCommits(github, { getPeriods, isWanted }) {
 // We key on the SHA rather than the full link, as the link changes when a repo
 // is renamed or moved and the commit would otherwise be stored again. Private
 // commits have no link, so we fall back to the date for those.
-function getCommitKey(commit) {
+function getCommitKey(commit: Contribution): string | number {
   if (!commit.link) {
     return new Date(commit.createdAt).getTime();
   }
 
-  return commit.link.split('/').pop();
+  return commit.link.split('/').pop()!;
 }
 
-async function processReviews(github, { getPeriods, isWanted }) {
+async function processReviews(
+  github: Context,
+  { getPeriods, isWanted }: SearchOptions
+): Promise<FetchedContribution[]> {
   if (!github.reviewsEnabled) {
     debug('Fetching reviews is disabled, skipping!');
     return [];
@@ -427,18 +482,17 @@ async function processReviews(github, { getPeriods, isWanted }) {
   // review newer than the searched periods, no matter when the PR was created.
   // The unwanted reviews of those PRs are filtered out further down.
   const allPRs = await searchAllPeriods(
-    github,
     getPeriods(),
     (period, page) => getPRPage(github, 'reviewed-by', period, page, 'updated'),
     'PRs',
-    { skipProcessing: true }
+    (results) => filterOwn(github, results)
   );
 
-  const prTitleMap = new Map();
-  allPRs.forEach((pr) => prTitleMap.set(pr.pull_request.url, pr.title));
+  const prTitleMap = new Map<string, string>();
+  allPRs.forEach((pr) => prTitleMap.set(pr.pull_request!.url!, pr.title));
 
   // Now that we have all the PRs, we need to fetch the reviews
-  const allReviews = [];
+  const allReviews: Review[][] = [];
 
   const prReviewsList = getPRReviews(
     allPRs,
@@ -457,7 +511,10 @@ async function processReviews(github, { getPeriods, isWanted }) {
   return processedReviews.filter(isWanted);
 }
 
-async function processComments(github, { getPeriods, isWanted }) {
+async function processComments(
+  github: Context,
+  { getPeriods, isWanted }: SearchOptions
+): Promise<FetchedContribution[]> {
   if (!github.commentsEnabled) {
     debug('Fetching comments is disabled, skipping!');
     return [];
@@ -470,25 +527,24 @@ async function processComments(github, { getPeriods, isWanted }) {
   // date finds every one with a comment newer than the searched periods, no
   // matter when it was created. The unwanted comments are filtered out further
   // down.
-  const allCommentedIssues = [];
+  const allCommentedIssues: IssueSearchItem[] = [];
   for (const type of ['issue', 'pull-request']) {
     const commented = await searchAllPeriods(
-      github,
       getPeriods(),
       (period, page) => getCommentedPage(github, type, period, page),
       `commented ${type}s`,
-      { skipProcessing: true }
+      (results) => filterOwn(github, results)
     );
     allCommentedIssues.push(...commented);
   }
 
-  const commentTitleMap = new Map();
+  const commentTitleMap = new Map<string, string>();
   allCommentedIssues.forEach((commentIssue) =>
     commentTitleMap.set(commentIssue.url, commentIssue.title)
   );
 
   // Now that we have all the commented issues, we need to fetch the actual comments
-  const allComments = [];
+  const allComments: IssueComment[][] = [];
 
   const commentsList = getComments(
     allCommentedIssues,
@@ -507,19 +563,26 @@ async function processComments(github, { getPeriods, isWanted }) {
   return processedComments.filter(isWanted);
 }
 
-// Runs a search for every period and returns the results of all pages.
-async function searchAllPeriods(
-  github,
-  periods,
-  getPage,
-  label,
-  { skipProcessing } = {}
-) {
-  const allResults = [];
+// Search results are returned as they are, only filtered by `filter`. Used
+// when the actual contributions (e.g. reviews or comments) are fetched later.
+function filterOwn<T extends GitHubEntity>(github: Context, results: T[]): T[] {
+  return results.filter((item) => filter(github.filter, item));
+}
+
+type GetPage<T> = (period: Period, page: number) => Promise<T[]>;
+type ProcessPage<T, R> = (results: T[]) => R[] | Promise<R[]>;
+
+// Runs a search for every period and returns the results of all pages, each
+// page passed through `processPage`.
+async function searchAllPeriods<T, R>(
+  periods: AsyncIterable<Period> | Iterable<Period>,
+  getPage: GetPage<T>,
+  label: string,
+  processPage: ProcessPage<T, R>
+): Promise<R[]> {
+  const allResults: R[][] = [];
   for await (const periodChunk of periods) {
-    const currentPage = pageGenerator(github, periodChunk, getPage, {
-      skipProcessing,
-    });
+    const currentPage = pageGenerator(periodChunk, getPage, processPage);
     for await (const results of currentPage) {
       debug(`Got ${results.length} ${label}`);
       allResults.push(results);
@@ -529,7 +592,11 @@ async function searchAllPeriods(
   return allResults.flat();
 }
 
-function getNextPeriod(stopDate, period, lowerBoundDate) {
+function getNextPeriod(
+  stopDate: string,
+  period: Period,
+  lowerBoundDate: Date
+): Period | null {
   const [before, after] = period;
 
   // First of the previous month
@@ -559,13 +626,16 @@ function getNextPeriod(stopDate, period, lowerBoundDate) {
     endOfBeforeDay <= new Date(stopDate) ||
     endOfBeforeDay <= lowerBoundDate
   ) {
-    return [];
+    return null;
   }
 
   return [newBeforeDate, newAfterDate];
 }
 
-async function* periodGenerator(stopDate, lowerBoundDate) {
+async function* periodGenerator(
+  stopDate: string,
+  lowerBoundDate: Date
+): AsyncGenerator<Period> {
   const date = new Date();
   date.setUTCDate(1);
   const firstOfThisMonth = `${date.getUTCFullYear()}-${getPadded(
@@ -576,14 +646,15 @@ async function* periodGenerator(stopDate, lowerBoundDate) {
   const lastOfThisMonth = `${date.getUTCFullYear()}-${getPadded(
     date.getUTCMonth() + 1
   )}-${date.getUTCDate()}`;
-  let currentPeriod = [lastOfThisMonth, firstOfThisMonth];
+  let currentPeriod: Period = [lastOfThisMonth, firstOfThisMonth];
   while (true) {
     yield currentPeriod;
-    currentPeriod = getNextPeriod(stopDate, currentPeriod, lowerBoundDate);
-    if (!currentPeriod.length) {
+    const nextPeriod = getNextPeriod(stopDate, currentPeriod, lowerBoundDate);
+    if (!nextPeriod) {
       debug('We reached the stop date, we are done!');
       return;
     }
+    currentPeriod = nextPeriod;
   }
 }
 
@@ -591,7 +662,10 @@ async function* periodGenerator(stopDate, lowerBoundDate) {
 // both inclusive. A backfill is limited to a few organizations or
 // repositories, so a year rarely exceeds the search limit. If it does,
 // pageGenerator splits the period.
-function* backfillPeriodGenerator(startDate, endDate) {
+function* backfillPeriodGenerator(
+  startDate: Date,
+  endDate: Date
+): Generator<Period> {
   const start = formatDate(startDate);
   let before = new Date(
     Date.UTC(
@@ -615,10 +689,14 @@ function* backfillPeriodGenerator(startDate, endDate) {
 // GitHub search returns at most 1,000 results (10 pages) per query.
 const MAX_SEARCH_PAGES = 10;
 
-async function* pageGenerator(github, period, cb, { skipProcessing } = {}) {
+async function* pageGenerator<T, R>(
+  period: Period,
+  cb: GetPage<T>,
+  processPage: ProcessPage<T, R>
+): AsyncGenerator<R[]> {
   // Pages are only yielded once the period is complete, so a truncated period
   // can be discarded and fetched again in smaller chunks without duplicates.
-  const pages = [];
+  const pages: T[][] = [];
   for (let page = 1; page <= MAX_SEARCH_PAGES; page++) {
     debug(`Getting data for period between ${period[1]} and ${period[0]}`);
     const results = await cb(period, page);
@@ -643,20 +721,18 @@ async function* pageGenerator(github, period, cb, { skipProcessing } = {}) {
         `Search limit reached between ${period[1]} and ${period[0]}, splitting period`
       );
       for (const half of halves) {
-        yield* pageGenerator(github, half, cb, { skipProcessing });
+        yield* pageGenerator(half, cb, processPage);
       }
       return;
     }
   }
 
   for (const results of pages) {
-    yield skipProcessing
-      ? results.filter((item) => filter(github.filter, item))
-      : await processEntities(github, results);
+    yield await processPage(results);
   }
 }
 
-function formatDate(date) {
+function formatDate(date: Date): string {
   return `${date.getUTCFullYear()}-${getPadded(
     date.getUTCMonth() + 1
   )}-${getPadded(date.getUTCDate())}`;
@@ -664,10 +740,12 @@ function formatDate(date) {
 
 // Splits an inclusive [before, after] period into two non-overlapping halves,
 // newest first. Returns an empty array for a single day.
-function splitPeriod([before, after]) {
+function splitPeriod([before, after]: Period): Period[] {
   const beforeDate = new Date(before);
   const afterDate = new Date(after);
-  const days = Math.round((beforeDate - afterDate) / (1000 * 60 * 60 * 24));
+  const days = Math.round(
+    (beforeDate.getTime() - afterDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
   if (days < 1) {
     return [];
   }
@@ -685,15 +763,15 @@ function splitPeriod([before, after]) {
 
 // Appends the qualifier limiting the search to some organizations or
 // repositories, see backfill.
-function qualifier(searchQualifier) {
+function qualifier(searchQualifier: string): string {
   return searchQualifier ? `+${searchQualifier}` : '';
 }
 
 async function getCommitPage(
-  { username, delayMsPerRequest, searchQualifier },
-  commitsPeriod,
-  page
-) {
+  { username, delayMsPerRequest, searchQualifier }: Context,
+  commitsPeriod: Period,
+  page: number
+): Promise<CommitSearchItem[]> {
   const [before, after] = commitsPeriod;
 
   debug(`Getting commits page ${page} between ${after} and ${before}`);
@@ -709,7 +787,12 @@ async function getCommitPage(
   });
 }
 
-async function getIssuePage(github, relationship, issuesPeriod, page) {
+async function getIssuePage(
+  github: Context,
+  relationship: string,
+  issuesPeriod: Period,
+  page: number
+): Promise<IssueSearchItem[]> {
   const [before, after] = issuesPeriod;
 
   debug(`Getting issues page ${page} between ${after} and ${before}`);
@@ -726,7 +809,12 @@ async function getIssuePage(github, relationship, issuesPeriod, page) {
   });
 }
 
-async function getCommentedPage(github, type, commentedPeriod, page) {
+async function getCommentedPage(
+  github: Context,
+  type: string,
+  commentedPeriod: Period,
+  page: number
+): Promise<IssueSearchItem[]> {
   const [before, after] = commentedPeriod;
 
   debug(
@@ -749,12 +837,12 @@ async function getCommentedPage(github, type, commentedPeriod, page) {
 // `dateField` is the search qualifier the period applies to, either `created`
 // or `updated`.
 async function getPRPage(
-  github,
-  relationship,
-  reviewPeriod,
-  page,
-  dateField = 'created'
-) {
+  github: Context,
+  relationship: string,
+  reviewPeriod: Period,
+  page: number,
+  dateField: 'created' | 'updated' = 'created'
+): Promise<IssueSearchItem[]> {
   const [before, after] = reviewPeriod;
 
   debug(`Getting PR page ${page} between ${after} and ${before}`);
@@ -770,7 +858,11 @@ async function getPRPage(
   });
 }
 
-function getPRReviews(prList, reviewerUsername, delay) {
+function getPRReviews(
+  prList: IssueSearchItem[],
+  reviewerUsername: string,
+  delay: number
+): AsyncGenerator<Review[]> {
   return getOwnItems(
     prList,
     reviewerUsername,
@@ -781,7 +873,11 @@ function getPRReviews(prList, reviewerUsername, delay) {
   );
 }
 
-function getComments(issueList, commenterUsername, delay) {
+function getComments(
+  issueList: IssueSearchItem[],
+  commenterUsername: string,
+  delay: number
+): AsyncGenerator<IssueComment[]> {
   return getOwnItems(
     issueList,
     commenterUsername,
@@ -794,14 +890,30 @@ function getComments(issueList, commenterUsername, delay) {
 
 // Fetches the items (e.g. reviews or comments) of each searched issue or PR and
 // yields the ones created by `username`.
-async function* getOwnItems(searchResults, username, delay, label, fetchItems) {
+async function* getOwnItems<T extends { user?: { login: string } | null }>(
+  searchResults: IssueSearchItem[],
+  username: string,
+  delay: number,
+  label: string,
+  fetchItems: (issue: {
+    owner: string;
+    repo: string;
+    number: number;
+  }) => Promise<T[]>
+): AsyncGenerator<T[]> {
   debug(`Getting ${label}`);
   const login = username.toLowerCase();
   for await (const result of searchResults) {
     try {
-      const [, owner, repo] = /github\.com\/repos\/(.+)\/(.*)/.exec(
+      const match = /github\.com\/repos\/(.+)\/(.*)/.exec(
         result.repository_url
       );
+      if (!match) {
+        throw new Error(
+          `Unexpected repository URL ${result.repository_url} while fetching ${label}`
+        );
+      }
+      const [, owner = '', repo = ''] = match;
       // We're waiting for a bit here, as we've previously hit a secondary GitHub rate limit...
       if (delay !== 0) {
         await sleep(delay);
@@ -831,34 +943,53 @@ async function* getOwnItems(searchResults, username, delay, label, fetchItems) {
 // recover and would otherwise abort every run.
 const BLOCKED_REPOSITORY_MESSAGE = /repository access blocked/i;
 
-function isGoneError(error) {
-  if ([404, 410, 451].includes(error?.status)) {
+// The shape of Octokit's RequestError we rely on. Anything else (e.g. a network
+// error) is never treated as gone. The response body is not necessarily JSON.
+const requestErrorSchema = z.object({
+  status: z.number(),
+  response: z.object({ data: z.unknown() }).optional(),
+});
+const errorBodySchema = z.object({ message: z.string() });
+
+function isGoneError(error: unknown): boolean {
+  const requestError = requestErrorSchema.safeParse(error);
+  if (!requestError.success) {
+    return false;
+  }
+
+  const { status, response } = requestError.data;
+  if ([404, 410, 451].includes(status)) {
     return true;
   }
 
-  return (
-    error?.status === 403 &&
-    BLOCKED_REPOSITORY_MESSAGE.test(error?.response?.data?.message ?? '')
-  );
+  const message = errorBodySchema.safeParse(response?.data).data?.message;
+  return status === 403 && BLOCKED_REPOSITORY_MESSAGE.test(message ?? '');
 }
 
 // Returns a function that resolves whether the repository `owner/repo` is
 // private. Search results for issues and PRs (and therefore their comments and
 // reviews) do not state the visibility of their repository, so we look it up
 // once per repository and run.
-function createPrivateRepoLookup(delay) {
-  const cache = new Map();
+function createPrivateRepoLookup(
+  delay: number
+): (fullName: string) => Promise<boolean> {
+  const cache = new Map<string, Promise<boolean>>();
   return (fullName) => {
-    if (!cache.has(fullName)) {
-      cache.set(fullName, fetchIsPrivateRepo(fullName, delay));
+    let isPrivate = cache.get(fullName);
+    if (!isPrivate) {
+      isPrivate = fetchIsPrivateRepo(fullName, delay);
+      cache.set(fullName, isPrivate);
     }
 
-    return cache.get(fullName);
+    return isPrivate;
   };
 }
 
-async function fetchIsPrivateRepo(fullName, delay) {
-  const [owner, repo] = fullName.split('/');
+async function fetchIsPrivateRepo(
+  fullName: string,
+  delay: number
+): Promise<boolean> {
+  const [owner = '', repo = ''] = fullName.split('/');
   if (delay !== 0) {
     await sleep(delay);
   }
@@ -881,7 +1012,10 @@ async function fetchIsPrivateRepo(fullName, delay) {
 
 const REPO_API_URL = /\/repos\/([^/]+)\/([^/]+)/;
 
-async function isPrivateEntity(github, entity) {
+async function isPrivateEntity(
+  github: Context,
+  entity: IssueOrComment
+): Promise<boolean> {
   // Without `allowPrivate` the token was verified to have no access to private
   // repositories, so there is nothing to hide and no need for a lookup.
   if (!github.allowPrivate) {
@@ -889,7 +1023,10 @@ async function isPrivateEntity(github, entity) {
   }
 
   const apiUrl =
-    entity.repository_url || entity.issue_url || entity.pull_request_url;
+    ('repository_url' in entity && entity.repository_url) ||
+    ('issue_url' in entity && entity.issue_url) ||
+    ('pull_request_url' in entity && entity.pull_request_url) ||
+    undefined;
   const match = REPO_API_URL.exec(apiUrl ?? '');
   if (!match) {
     debug('Could not determine repository, treating it as private', entity);
@@ -899,38 +1036,61 @@ async function isPrivateEntity(github, entity) {
   return github.isPrivateRepo(`${match[1]}/${match[2]}`.toLowerCase());
 }
 
-async function processEntities(github, entities, titleMap) {
-  const contributions = [];
+async function processEntities(
+  github: Context,
+  entities: GitHubEntity[],
+  titleMap?: Map<string, string>
+): Promise<FetchedContribution[]> {
+  const contributions: FetchedContribution[] = [];
   for (const entity of entities) {
     if (!filter(github.filter, entity)) {
       continue;
     }
 
     // Commits carry the visibility of their repository, see formatCommit.
-    const isPrivate = !entity.commit && (await isPrivateEntity(github, entity));
+    const isPrivate =
+      !isCommit(entity) && (await isPrivateEntity(github, entity));
     contributions.push(format(github.types, entity, titleMap, isPrivate));
   }
 
   return contributions;
 }
 
-function filter(filterRegex, entity) {
+function isCommit(entity: GitHubEntity): entity is CommitSearchItem {
+  return 'commit' in entity && Boolean(entity.commit);
+}
+
+function isReview(entity: IssueOrComment): entity is Review {
+  return 'pull_request_url' in entity && Boolean(entity.pull_request_url);
+}
+
+function isComment(entity: IssueOrComment): entity is IssueComment {
+  return 'issue_url' in entity && Boolean(entity.issue_url);
+}
+
+function filter(filterRegex: RegExp, entity: GitHubEntity): boolean {
   const matchesRegex = filterRegex.test(entity.html_url);
-  const isFork = entity.repository && entity.repository.fork;
+  const isFork =
+    'repository' in entity && entity.repository && entity.repository.fork;
   return matchesRegex && !isFork;
 }
 
-function format(types, entity, titleMap, isPrivate) {
-  if (entity.commit) {
+function format(
+  types: GitHubTypes,
+  entity: GitHubEntity,
+  titleMap: Map<string, string> | undefined,
+  isPrivate: boolean
+): FetchedContribution {
+  if (isCommit(entity)) {
     return formatCommit(types, entity);
   }
 
   const contribution = (() => {
-    if (entity.pull_request_url) {
+    if (isReview(entity)) {
       return formatPRReview(types, entity, titleMap);
     }
 
-    if (entity.issue_url) {
+    if (isComment(entity)) {
       return formatComment(types, entity, titleMap);
     }
 
@@ -948,9 +1108,12 @@ function format(types, entity, titleMap, isPrivate) {
   };
 }
 
-function formatCommit(types, entity) {
+function formatCommit(
+  types: GitHubTypes,
+  entity: CommitSearchItem
+): FetchedContribution {
   const createdAt = new Date(entity.commit.author.date);
-  let description;
+  let description: string;
   let link = '';
 
   if (entity.repository.private) {
@@ -969,7 +1132,10 @@ function formatCommit(types, entity) {
   };
 }
 
-function formatIssue(types, entity) {
+function formatIssue(
+  types: GitHubTypes,
+  entity: IssueSearchItem
+): FetchedContribution {
   return {
     createdAt: new Date(entity.created_at),
     description: entity.title,
@@ -983,10 +1149,14 @@ function formatIssue(types, entity) {
   };
 }
 
-function formatComment(types, entity, titleMap) {
+function formatComment(
+  types: GitHubTypes,
+  entity: IssueComment,
+  titleMap?: Map<string, string>
+): FetchedContribution {
   let description = '';
   if (titleMap) {
-    description = titleMap.get(entity.issue_url);
+    description = titleMap.get(entity.issue_url) ?? '';
   }
 
   return {
@@ -1000,7 +1170,11 @@ function formatComment(types, entity, titleMap) {
   };
 }
 
-function formatPRReview(types, entity, titleMap) {
+function formatPRReview(
+  types: GitHubTypes,
+  entity: Review,
+  titleMap?: Map<string, string>
+): FetchedContribution {
   const type = (() => {
     switch (entity.state) {
       case 'COMMENTED':
@@ -1016,11 +1190,11 @@ function formatPRReview(types, entity, titleMap) {
 
   let description = '';
   if (titleMap) {
-    description = titleMap.get(entity.pull_request_url);
+    description = titleMap.get(entity.pull_request_url) ?? '';
   }
 
   return {
-    createdAt: new Date(entity.submitted_at),
+    createdAt: new Date(entity.submitted_at!),
     description,
     link: entity.html_url,
     type,

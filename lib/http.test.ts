@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 
 import { assertOk, request, requestOk, USER_AGENT } from './http.js';
+import { mockedFetch } from './test-helpers.js';
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200 }));
@@ -30,12 +31,17 @@ test('should return the response for a successful request', async () => {
 });
 
 test('should throw with source name, url and status if not ok', async () => {
-  fetch.mockResolvedValueOnce({ ok: false, status: 503 });
+  mockedFetch().mockResolvedValueOnce({
+    ok: false,
+    status: 503,
+  } as Response);
   await expect(requestOk('https://example.com', 'Test')).rejects.toThrow(
     'Test request to https://example.com failed with status 503'
   );
 });
 
 test('assertOk should not throw for an ok response', () => {
-  expect(() => assertOk({ ok: true }, 'Test', 'https://x')).not.toThrow();
+  expect(() =>
+    assertOk({ ok: true, status: 200 }, 'Test', 'https://x')
+  ).not.toThrow();
 });

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 
-import { validateConfig } from './validator.js';
+import { type Config, validateConfig } from './validator.js';
 
 const config = {
   outputFile: 'file',
@@ -58,8 +58,12 @@ test('should accept tag rules for every source', () => {
   };
 
   const result = validateConfig(tagConfig);
-  for (const key of Object.keys(tagConfig)) {
-    expect(result[key].tagRules).toHaveLength(key === 'github' ? 1 : 2);
+  for (const key of Object.keys(tagConfig) as (keyof typeof tagConfig)[]) {
+    const source = result[key] as Extract<
+      NonNullable<Config[typeof key]>,
+      { enabled: true }
+    >;
+    expect(source.tagRules).toHaveLength(key === 'github' ? 1 : 2);
   }
 });
 
@@ -76,7 +80,7 @@ test('should throw when a non-GitHub tag rule has a pattern', () => {
 });
 
 test('should throw when missing config', () => {
-  expect(() => validateConfig()).toThrow();
+  expect(() => validateConfig(undefined)).toThrow();
 });
 
 test('should throw when community portal validation fails', () => {

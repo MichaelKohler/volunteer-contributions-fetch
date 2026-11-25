@@ -1,5 +1,7 @@
 import { expect, test } from 'vitest';
 
+import type { Contribution } from './types.js';
+
 import {
   applyTagRules,
   dateRangeSchema,
@@ -7,7 +9,7 @@ import {
   tagRuleSchema,
 } from './tags.js';
 
-const contribution = {
+const contribution: Contribution = {
   createdAt: '2022-06-15T12:00:00.000Z',
   description: 'Foo',
   link: 'https://github.com/mozilla/foo/pull/1',
@@ -116,8 +118,8 @@ test('should include both ends of the date range', () => {
     {
       tags: ['a'],
       dateRange: {
-        startDate: contribution.createdAt,
-        endDate: contribution.createdAt,
+        startDate: contribution.createdAt as string,
+        endDate: contribution.createdAt as string,
       },
     },
   ];

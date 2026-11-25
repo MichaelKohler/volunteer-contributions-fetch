@@ -11,15 +11,19 @@ import {
 } from './contributions.js';
 import * as discourse from './discourse.js';
 import * as github from './github.js';
+import type { BackfillOptions } from './github.js';
 import * as osm from './osm.js';
 import { applyTagRules } from './tags.js';
-import { validateConfig } from './validator.js';
+import type { Contribution } from './types.js';
+import { type Config, type ConfigInput, validateConfig } from './validator.js';
 import * as wiki from './wiki.js';
 
 const debug = Debug('contributions:gather');
 
+type SourceKey = Exclude<keyof Config, 'outputFile'>;
+
 // Maps the config key of each source to the categories of its contributions.
-const SOURCE_CATEGORIES = {
+const SOURCE_CATEGORIES: Record<SourceKey, string[]> = {
   bugzilla: bugzilla.CATEGORIES,
   communityPortal: communityPortal.CATEGORIES,
   discourse: discourse.CATEGORIES,
@@ -31,9 +35,9 @@ const SOURCE_CATEGORIES = {
 // Tags are applied to saved contributions as well, so changed rules are
 // reflected without fetching everything again. Contributions of a disabled
 // or unknown source are kept as they are, as there is no config to apply.
-function applyTags(config, contribution) {
-  const configKey = Object.keys(SOURCE_CATEGORIES).find((key) =>
-    SOURCE_CATEGORIES[key].includes(contribution.source)
+function applyTags(config: Config, contribution: Contribution): Contribution {
+  const configKey = (Object.keys(SOURCE_CATEGORIES) as SourceKey[]).find(
+    (key) => SOURCE_CATEGORIES[key].includes(contribution.source)
   );
   const sourceConfig = configKey && config[configKey];
   if (!sourceConfig?.enabled) {
@@ -43,7 +47,7 @@ function applyTags(config, contribution) {
   return applyTagRules(sourceConfig.tagRules, contribution);
 }
 
-async function writeFileAtomic(file, content) {
+async function writeFileAtomic(file: string, content: string): Promise<void> {
   const tempFile = `${file}.${process.pid}.${randomUUID()}.tmp`;
   try {
     await fs.writeFile(tempFile, content);
@@ -54,23 +58,26 @@ async function writeFileAtomic(file, content) {
   }
 }
 
-async function loadContributions(config, contributions) {
+async function loadContributions(
+  config: Config,
+  contributions: Contribution[]
+): Promise<Contribution[]> {
   if (!config.outputFile) {
     return contributions;
   }
 
   debug('checking output file...');
   try {
-    const existingContributions = JSON.parse(
-      await fs.readFile(config.outputFile)
+    const existingContributions: unknown = JSON.parse(
+      await fs.readFile(config.outputFile, 'utf8')
     );
     if (!Array.isArray(existingContributions)) {
       throw new Error('expected a JSON array of contributions');
     }
 
-    return existingContributions;
+    return existingContributions as Contribution[];
   } catch (error) {
-    if (error.code === 'ENOENT') {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       debug('output file does not exist, creating!');
       await writeFileAtomic(config.outputFile, JSON.stringify([]));
       return [];
@@ -79,17 +86,17 @@ async function loadContributions(config, contributions) {
     // Never continue with an unreadable or corrupt output file, as we would
     // overwrite it later on and lose all previously saved contributions.
     throw new Error(
-      `Could not read existing output file ${config.outputFile}: ${error.message}`,
+      `Could not read existing output file ${config.outputFile}: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error }
     );
   }
 }
 
 async function saveContributions(
-  config,
-  contributionsToSave,
-  existingContributions
-) {
+  config: Config,
+  contributionsToSave: Contribution[],
+  existingContributions: Contribution[]
+): Promise<Contribution[]> {
   const uniqueContributions = ensureUniqueContributions(
     contributionsToSave
   ).map((contribution) => applyTags(config, contribution));
@@ -116,7 +123,10 @@ async function saveContributions(
   return uniqueContributions;
 }
 
-export async function fetchAll(rawConfig, contributions = []) {
+export async function fetchAll(
+  rawConfig: ConfigInput,
+  contributions: Contribution[] = []
+): Promise<Contribution[]> {
   const config = validateConfig(rawConfig);
   const existingContributions = await loadContributions(config, contributions);
 
@@ -133,21 +143,22 @@ export async function fetchAll(rawConfig, contributions = []) {
   // This also includes sources that handle their own "existing contributions" keeping
   // even if only new contributions are fetched.
   // Saved entries of a disabled source are kept, as it was not re-fetched.
-  const ALWAYS_FULL_FETCH_SOURCE_ENTRIES = {
-    communityPortal: [
-      communityPortal.EVENTS_CATEGORY,
-      communityPortal.CAMPAIGNS_CATEGORY,
-    ],
-    discourse: [discourse.POSTS_CATEGORY, discourse.TOPICS_CATEGORY],
-    mediaWiki: [wiki.WIKI_CATEGORY],
-    osm: [osm.OSM_CATEGORY],
-  };
-  const refetchedSourceEntries = Object.entries(
-    ALWAYS_FULL_FETCH_SOURCE_ENTRIES
+  const ALWAYS_FULL_FETCH_SOURCE_ENTRIES: Partial<Record<SourceKey, string[]>> =
+    {
+      communityPortal: [
+        communityPortal.EVENTS_CATEGORY,
+        communityPortal.CAMPAIGNS_CATEGORY,
+      ],
+      discourse: [discourse.POSTS_CATEGORY, discourse.TOPICS_CATEGORY],
+      mediaWiki: [wiki.WIKI_CATEGORY],
+      osm: [osm.OSM_CATEGORY],
+    };
+  const refetchedSourceEntries = (
+    Object.entries(ALWAYS_FULL_FETCH_SOURCE_ENTRIES) as [SourceKey, string[]][]
   )
     .filter(([configKey]) => config[configKey]?.enabled)
     .flatMap(([, categories]) => categories);
-  const fetchedContributions = [
+  const fetchedContributions: Contribution[] = [
     ...discourseResult,
     ...wikiResult,
     ...communityPortalResult,
@@ -192,7 +203,11 @@ export async function fetchAll(rawConfig, contributions = []) {
 // Fetches older GitHub contributions of the given organizations, users or
 // repositories once, e.g. after adding a new pattern to `filter`. See
 // github.backfill for the options. Other sources are not fetched.
-export async function backfillGitHub(rawConfig, options, contributions = []) {
+export async function backfillGitHub(
+  rawConfig: ConfigInput,
+  options: BackfillOptions,
+  contributions: Contribution[] = []
+): Promise<Contribution[]> {
   const config = validateConfig(rawConfig);
   const existingContributions = await loadContributions(config, contributions);
 

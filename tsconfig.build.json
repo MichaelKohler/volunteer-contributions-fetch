@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true
+  },
+  "include": ["index.ts", "lib"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "lib/**/*.test.ts",
+    "lib/test-helpers.ts"
+  ]
+}

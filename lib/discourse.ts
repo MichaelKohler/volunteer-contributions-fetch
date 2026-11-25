@@ -3,6 +3,7 @@ import { setTimeout as sleep } from 'timers/promises';
 import { z } from 'zod';
 
 import { requestOk } from './http.js';
+import type { Contribution, FetchedContribution } from './types.js';
 import { tagRuleSchema } from './tags.js';
 import { baseUrlSchema, sourceSchema } from './utils.js';
 
@@ -28,7 +29,39 @@ export const discourseSchema = sourceSchema(
   })
 );
 
-export async function gather({ discourse }, existingContributions = []) {
+export type DiscourseConfig = z.output<typeof discourseSchema>;
+export type EnabledDiscourseConfig = Extract<
+  DiscourseConfig,
+  { enabled: true }
+>;
+
+interface DiscourseTopic {
+  id: number;
+  slug: string;
+  title: string;
+  created_at: string;
+}
+
+interface DiscoursePost {
+  topic_id: number;
+  post_number: number;
+  slug: string;
+  title: string;
+  created_at: string;
+}
+
+interface TopicListResponse {
+  topic_list: { topics: DiscourseTopic[]; more_topics_url?: string };
+}
+
+interface UserActionsResponse {
+  user_actions: DiscoursePost[];
+}
+
+export async function gather(
+  { discourse }: { discourse?: DiscourseConfig },
+  existingContributions: Contribution[] = []
+): Promise<FetchedContribution[]> {
   if (!discourse?.enabled) {
     debug('Discourse source not enabled, skipping');
     return [];
@@ -55,7 +88,7 @@ export async function gather({ discourse }, existingContributions = []) {
         createdAt: new Date(contribution.createdAt),
       })),
     ];
-    const seen = new Set();
+    const seen = new Set<string>();
     contributions = allContributions.filter((contribution) => {
       const key = getContributionKey(contribution);
       if (seen.has(key)) {
@@ -74,7 +107,7 @@ export async function gather({ discourse }, existingContributions = []) {
 // Discourse changes the slug when a topic is renamed, and the type depends on
 // the config, so neither can be part of the key. Otherwise the saved entry and
 // the refetched one would both be kept with keepDeletedPost.
-function getContributionKey(contribution) {
+function getContributionKey(contribution: Contribution): string {
   const link = contribution.link.replace(/\/t\/[^/]*\/(\d+)/, '/t/-/$1');
   return `${contribution.source}|${link}`;
 }
@@ -84,9 +117,9 @@ async function processTopics({
   username,
   topicType,
   delayMsPerRequest,
-}) {
+}: EnabledDiscourseConfig) {
   debug('Getting topics from Discourse');
-  let allTopics = [];
+  let allTopics: FetchedContribution[] = [];
 
   const page = topicPageGenerator(baseUrl, username, delayMsPerRequest);
 
@@ -105,9 +138,9 @@ async function processPosts({
   username,
   postType,
   delayMsPerRequest,
-}) {
+}: EnabledDiscourseConfig) {
   debug('Getting posts from Discourse');
-  let allPosts = [];
+  let allPosts: FetchedContribution[] = [];
 
   const page = postPageGenerator(baseUrl, username, delayMsPerRequest);
 
@@ -124,7 +157,11 @@ async function processPosts({
 // The page size depends on the forum's settings, so a short page does not
 // mean we are done. Discourse sets more_topics_url as long as there is a next
 // page.
-async function* topicPageGenerator(baseUrl, username, delayMsPerRequest) {
+async function* topicPageGenerator(
+  baseUrl: string,
+  username: string,
+  delayMsPerRequest: number
+): AsyncGenerator<DiscourseTopic[]> {
   let page = 0;
   while (true) {
     if (page > 0 && delayMsPerRequest !== 0) {
@@ -132,7 +169,8 @@ async function* topicPageGenerator(baseUrl, username, delayMsPerRequest) {
     }
     debug(`Getting page ${page}`);
     const url = `${baseUrl}/topics/created-by/${encodeURIComponent(username)}.json?page=${page}`;
-    const { topic_list: topicList } = await getDiscourseData(url);
+    const { topic_list: topicList } =
+      await getDiscourseData<TopicListResponse>(url);
     yield topicList.topics;
 
     if (!topicList.more_topics_url || topicList.topics.length === 0) {
@@ -145,7 +183,11 @@ async function* topicPageGenerator(baseUrl, username, delayMsPerRequest) {
 
 // user_actions has no "more" marker, so we advance the offset by what we
 // actually got and stop at the first empty page.
-async function* postPageGenerator(baseUrl, username, delayMsPerRequest) {
+async function* postPageGenerator(
+  baseUrl: string,
+  username: string,
+  delayMsPerRequest: number
+): AsyncGenerator<DiscoursePost[]> {
   let offset = 0;
   while (true) {
     if (offset > 0 && delayMsPerRequest !== 0) {
@@ -153,7 +195,8 @@ async function* postPageGenerator(baseUrl, username, delayMsPerRequest) {
     }
     debug(`Getting posts from offset ${offset}`);
     const url = `${baseUrl}/user_actions.json?username=${encodeURIComponent(username)}&filter=5&offset=${offset}`;
-    const { user_actions: posts } = await getDiscourseData(url);
+    const { user_actions: posts } =
+      await getDiscourseData<UserActionsResponse>(url);
     if (posts.length === 0) {
       debug('We are done!');
       return;
@@ -163,12 +206,16 @@ async function* postPageGenerator(baseUrl, username, delayMsPerRequest) {
   }
 }
 
-async function getDiscourseData(url) {
+async function getDiscourseData<T>(url: string): Promise<T> {
   const response = await requestOk(url, 'Discourse');
-  return response.json();
+  return (await response.json()) as T;
 }
 
-function formatTopic(type, baseUrl, entity) {
+function formatTopic(
+  type: string | undefined,
+  baseUrl: string,
+  entity: DiscourseTopic
+): FetchedContribution {
   return {
     createdAt: new Date(entity.created_at),
     description: entity.title,
@@ -178,7 +225,11 @@ function formatTopic(type, baseUrl, entity) {
   };
 }
 
-function formatPost(type, baseUrl, entity) {
+function formatPost(
+  type: string | undefined,
+  baseUrl: string,
+  entity: DiscoursePost
+): FetchedContribution {
   return {
     createdAt: new Date(entity.created_at),
     description: entity.title,
